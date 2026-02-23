@@ -1,9 +1,10 @@
 {
   "package": {
     "productName": "Cinny",
-    "version": "4.10.3"
+    "version": "4.10.10"
   },
   "build": {
+    "withGlobalTauri": true,
     "distDir": "../cinny/dist",
     "devPath": "http://localhost:8080",
     "beforeDevCommand": "cd cinny && npm start",
@@ -13,7 +14,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "in.cinny.app",
+      "identifier": "org.endershare.cinny",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -21,12 +22,14 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "resources": [],
+      "resources": {
+        "resources/WebView2Loader.dll": ""
+      },
       "externalBin": [],
-      "copyright": "",
+      "copyright": "\u00a9 2026 endershare.org",
       "category": "SocialNetworking",
-      "shortDescription": "Yet another matrix client",
-      "longDescription": "",
+      "shortDescription": "Matrix client with voice channels",
+      "longDescription": "Cinny with LiveKit voice integration, RNNoise, and Discord-style UI",
       "deb": {
         "depends": []
       },
@@ -45,16 +48,21 @@
         "wix": {
           "bannerPath": "wix/banner.bmp",
           "dialogImagePath": "wix/dialogImage.bmp"
+        },
+        "nsis": {
+          "installerIcon": "icons/icon.ico",
+          "headerImage": "icons/128x128.png",
+          "sidebarImage": "icons/icon.png"
         }
       }
     },
     "updater": {
       "active": true,
       "endpoints": [
-          "https://github.com/cinnyapp/cinny-desktop/releases/download/tauri/release.json"
+        "https://cinny-updates.endershare.org/update.json"
       ],
-      "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE2NDc3NDBGMTAzNTk1NUYKUldSZmxUVVFEM1JIRnRuMjVRTkFOQ21lUFI5KzRMU0s4OWtBS1RNRUVCNE9LcE9GcExNZ2M2NHoK"
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYxMDE1OEFBM0MyNkUwMzMKUldRejRDWThxbGdCWWJVbUhUa2JvRFM0REhCaDlFZjgrMHFmejlvL0h3d1oyaWRVK3BNV1dIdWEK"
     },
     "allowlist": {
       "all": true
