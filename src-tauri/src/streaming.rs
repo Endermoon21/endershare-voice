@@ -504,14 +504,20 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         "nvenc" => {
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), config.preset.clone(), // p1-p7
-                "-tune".to_string(), "ll".to_string(),        // Low latency
-                "-bf".to_string(), "0".to_string(),           // No B-frames (WebRTC requirement)
-                "-profile:v".to_string(), "baseline".to_string(), // Maximum compatibility
-                "-rc".to_string(), "cbr".to_string(),         // Constant bitrate
+                "-preset".to_string(), "p1".to_string(),      // Fastest preset
+                "-tune".to_string(), "ull".to_string(),       // Ultra low latency
+                "-rc".to_string(), "cbr".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / config.fps), // Minimal buffer
-                "-g".to_string(), (config.fps * 2).to_string(), // Keyframe every 2 sec
+                "-maxrate".to_string(), format!("{}k", config.bitrate),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 30),
+                "-profile:v".to_string(), "baseline".to_string(),
+                "-bf".to_string(), "0".to_string(),           // No B-frames
+                "-g".to_string(), config.fps.to_string(),     // Keyframe every 1 sec
+                "-keyint_min".to_string(), config.fps.to_string(),
+                "-rc-lookahead".to_string(), "0".to_string(), // No lookahead
+                "-delay".to_string(), "0".to_string(),        // No delay
+                "-zerolatency".to_string(), "1".to_string(),  // Zero latency mode
+                "-forced-idr".to_string(), "1".to_string(),   // Force IDR frames
             ]);
         }
         "qsv" => {
