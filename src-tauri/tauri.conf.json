@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny",
-    "version": "4.10.28"
+    "version": "4.10.29"
   },
   "build": {
     "withGlobalTauri": true,
@@ -61,6 +61,7 @@
     "updater": {
       "active": true,
       "endpoints": [
+        "https://github.com/Endermoon21/endershare-voice/releases/latest/download/latest.json",
         "https://cinny-updates.endershare.org/update.json"
       ],
       "dialog": true,
