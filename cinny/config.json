@@ -1,18 +1,33 @@
 {
-  "defaultHomeserver": 0,
+  "defaultHomeserver": 1,
   "homeserverList": [
-    "matrix.endershare.org",
-    "matrix.org",
     "converser.eu",
-    "mozilla.org"
+    "matrix.org",
+    "mozilla.org",
+    "unredacted.org",
+    "xmr.se"
   ],
   "allowCustomHomeservers": true,
 
   "featuredCommunities": {
     "openAsDefault": false,
-    "spaces": [],
-    "rooms": [],
-    "servers": ["matrix.endershare.org", "matrix.org"]
+    "spaces": [
+      "#cinny-space:matrix.org",
+      "#community:matrix.org",
+      "#space:unredacted.org",
+      "#science-space:matrix.org",
+      "#libregaming-games:tchncs.de",
+      "#mathematics-on:matrix.org"
+    ],
+    "rooms": [
+      "#cinny:matrix.org",
+      "#freesoftware:matrix.org",
+      "#pcapdroid:matrix.org",
+      "#gentoo:matrix.org",
+      "#PrivSec.dev:arcticfoxes.net",
+      "#disroot:aria-net.org"
+    ],
+    "servers": [ "matrix.org", "mozilla.org", "unredacted.org" ]
   },
 
   "hashRouter": {
