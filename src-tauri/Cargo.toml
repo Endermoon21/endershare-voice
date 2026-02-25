@@ -1,6 +1,6 @@
 [package]
 name = "cinny"
-version = "4.10.27"
+version = "4.10.28"
 description = "Yet another matrix client"
 authors = ["Ajay Bura"]
 license = "AGPL-3.0-only"

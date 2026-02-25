@@ -340,6 +340,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
         encoder: getActualEncoder(),
         preset: getActualEncoder() === "nvenc" ? "p1" : "ultrafast",
         audio_enabled: audioEnabled,
+        bearer_token: ingress.streamKey,
       };
 
       await startNativeStream(config);

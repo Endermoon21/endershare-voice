@@ -35,6 +35,7 @@ export interface NativeStreamConfig {
   encoder: 'nvenc' | 'qsv' | 'amf' | 'x264';
   preset: string;
   audio_enabled: boolean;
+  bearer_token?: string;
 }
 
 /** Stream status */
