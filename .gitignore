@@ -5,3 +5,7 @@ devAssets
 
 .DS_Store
 src-tauri/binaries/ffmpeg-*
+
+# Cinny build artifacts
+cinny/node_modules
+cinny/dist
