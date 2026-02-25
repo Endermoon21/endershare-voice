@@ -9,6 +9,7 @@ import { ClientConfigLoader } from '../components/ClientConfigLoader';
 import { ClientConfigProvider } from '../hooks/useClientConfig';
 import { ConfigConfigError, ConfigConfigLoading } from './ConfigConfig';
 import { FeatureCheck } from './FeatureCheck';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { createRouter } from './Router';
 import { ScreenSizeProvider, useScreenSize } from '../hooks/useScreenSize';
 import { useCompositionEndTracking } from '../hooks/useComposingCheck';
@@ -22,6 +23,8 @@ function App() {
   const portalContainer = document.getElementById('portalContainer') ?? undefined;
 
   return (
+    <>
+      <UpdateBanner />
     <TooltipContainerProvider value={portalContainer}>
       <PopOutContainerProvider value={portalContainer}>
         <OverlayContainerProvider value={portalContainer}>
@@ -49,6 +52,7 @@ function App() {
         </OverlayContainerProvider>
       </PopOutContainerProvider>
     </TooltipContainerProvider>
+    </>
   );
 }
 
