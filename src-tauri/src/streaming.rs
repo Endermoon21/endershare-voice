@@ -247,6 +247,7 @@ pub async fn start_stream(
     }
 
     let ffmpeg_args = build_ffmpeg_args(&config)?;
+    log::info!("[Streaming] FFmpeg command: ffmpeg {}", ffmpeg_args.join(" "));
     
     log::info!("[Streaming] Starting FFmpeg with args: {:?}", ffmpeg_args);
 
@@ -296,7 +297,7 @@ pub async fn start_stream(
                     log::debug!("[FFmpeg stdout] {}", line);
                 }
                 CommandEvent::Terminated(payload) => {
-                    log::info!("[FFmpeg] Exited with code: {:?}", payload.code);
+                    log::info!("[FFmpeg] Process terminated - exit code: {:?}, signal: {:?}", payload.code, payload.signal);
                     if let Ok(mut running) = shared.is_running.lock() {
                         *running = false;
                     }
