@@ -416,7 +416,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     // Global options - minimal latency
     args.extend([
         "-hide_banner".to_string(),
-        "-loglevel".to_string(), "warning".to_string(),
+        "-loglevel", "info".to_string(),
         "-fflags".to_string(), "+genpts+discardcorrupt".to_string(),
         "-flags".to_string(), "low_delay".to_string(),
         "-y".to_string(),
@@ -436,7 +436,8 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             "-f".to_string(), "gdigrab".to_string(),
             "-draw_mouse".to_string(), "1".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
-            "-i".to_string(), config.source_id.clone(),
+            // Always use "desktop" for gdigrab - screen:N format is not supported
+            "-i".to_string(), "desktop".to_string(),
         ]);
     }
 
