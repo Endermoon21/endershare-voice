@@ -148,14 +148,11 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     return () => { container.remove(); };
   }, []);
 
-// Handle incoming screen share tracks from remote participants (including WHIP ingress)
+  // Handle incoming screen share tracks from remote participants (including WHIP ingress)
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: any, participant: RemoteParticipant) => {
-    // Check if this is a WHIP ingress participant (identity ends with -stream)
-    const isIngressStream = participant.identity.endsWith("-stream");
-    
     if (track.kind === Track.Kind.Audio) {
-      if (track.source === Track.Source.ScreenShareAudio || (isIngressStream && track.source === Track.Source.Microphone)) {
-        console.log("[LiveKit] Screen share audio track subscribed from", participant.identity, "source:", track.source);
+      if (track.source === Track.Source.ScreenShareAudio) {
+        console.log("[LiveKit] Screen share audio track subscribed from", participant.identity);
         const audioElement = track.attach();
         audioElement.id = "screenshare-audio-" + participant.identity;
         audioContainerRef.current?.appendChild(audioElement);
@@ -168,46 +165,28 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         if (savedVolume !== undefined) audioElement.volume = savedVolume;
         audioContainerRef.current?.appendChild(audioElement);
       }
-    } else if (track.kind === Track.Kind.Video) {
-      // Detect screen share either by track source OR by participant being a WHIP ingress (-stream suffix)
-      const isScreenShare = track.source === Track.Source.ScreenShare || 
-                           (isIngressStream && (track.source === Track.Source.Camera || track.source === Track.Source.Unknown));
-      
-      if (isScreenShare) {
-        console.log("[LiveKit] Screen share video track subscribed from", participant.identity, "source:", track.source, "isIngress:", isIngressStream);
-        // Extract the original username from ingress identity (remove -stream suffix)
-        const displayIdentity = isIngressStream ? participant.identity.replace(/-stream$/, "") : participant.identity;
-        const displayName = isIngressStream 
-          ? (participant.name?.replace(/ \(Stream\)$/, "") || displayIdentity)
-          : (participant.name || participant.identity);
-        
-        setScreenShareInfo({
-          participantIdentity: participant.identity,
-          participantName: displayName,
-          track,
-          audioTrack: null
-        });
-      }
+    } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
+      console.log("[LiveKit] Screen share video track subscribed from", participant.identity);
+      setScreenShareInfo({
+        participantIdentity: participant.identity,
+        participantName: participant.name || participant.identity,
+        track,
+        audioTrack: null
+      });
     }
   }, []);
 
   const handleTrackUnsubscribed = useCallback((track: RemoteTrack, publication: any, participant: RemoteParticipant) => {
-    const isIngressStream = participant.identity.endsWith("-stream");
-    
     if (track.kind === Track.Kind.Audio) {
-      if (track.source === Track.Source.ScreenShareAudio || (isIngressStream && track.source === Track.Source.Microphone)) {
+      if (track.source === Track.Source.ScreenShareAudio) {
         const el = document.getElementById("screenshare-audio-" + participant.identity);
         if (el) el.remove();
         setScreenShareInfo(prev => prev ? { ...prev, audioTrack: null } : null);
       } else {
         track.detach().forEach((el) => el.remove());
       }
-    } else if (track.kind === Track.Kind.Video) {
-      const isScreenShare = track.source === Track.Source.ScreenShare || 
-                           (isIngressStream && (track.source === Track.Source.Camera || track.source === Track.Source.Unknown));
-      if (isScreenShare) {
-        setScreenShareInfo(null);
-      }
+    } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
+      setScreenShareInfo(null);
     }
   }, []);
 
