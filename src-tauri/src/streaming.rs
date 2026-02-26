@@ -85,7 +85,26 @@ impl Default for StreamingState {
 pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
     #[cfg(target_os = "windows")]
     {
-        Ok(vec![CaptureSource { id: "desktop".to_string(), name: "Desktop (Full Screen)".to_string(), source_type: "screen".to_string(), width: None, height: None }])
+        use std::panic;
+        
+        // Try to enumerate sources, fall back to desktop-only on error
+        let result = panic::catch_unwind(|| {
+            list_windows_sources_safe()
+        });
+        
+        match result {
+            Ok(Ok(sources)) if !sources.is_empty() => Ok(sources),
+            _ => {
+                // Fallback to just desktop
+                Ok(vec![CaptureSource {
+                    id: "desktop".to_string(),
+                    name: "Desktop (Full Screen)".to_string(),
+                    source_type: "screen".to_string(),
+                    width: None,
+                    height: None,
+                }])
+            }
+        }
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -100,99 +119,93 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
 }
 
 #[cfg(target_os = "windows")]
-fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
+fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT};
-    use windows::Win32::Graphics::Gdi::{
-        EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW,
-    };
     use windows::Win32::UI::WindowsAndMessaging::{
         EnumWindows, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, IsWindowVisible,
+        GetWindowLongW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
     };
-
+    
     let mut sources = Vec::new();
-
-    // Enumerate monitors (screens)
-    unsafe {
-        unsafe extern "system" fn enum_monitors(
-            monitor: HMONITOR,
-            _hdc: HDC,
-            _rect: *mut RECT,
-            lparam: LPARAM,
-        ) -> BOOL {
-            let sources = unsafe { &mut *(lparam.0 as *mut Vec<CaptureSource>) };
-
-            let mut info = MONITORINFOEXW::default();
-            info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
-
-            if unsafe { GetMonitorInfoW(monitor, &mut info.monitorInfo as *mut _ as *mut _).as_bool() } {
-                let name_slice = &info.szDevice[..];
-                let name_end = name_slice.iter().position(|&c| c == 0).unwrap_or(32);
-                let _name = String::from_utf16_lossy(&name_slice[..name_end]);
-
-                let rect = info.monitorInfo.rcMonitor;
-                let width = (rect.right - rect.left) as u32;
-                let height = (rect.bottom - rect.top) as u32;
-                let idx = sources.iter().filter(|s| s.source_type == "screen").count();
-
-                sources.push(CaptureSource {
-                    id: if idx == 0 { "desktop".to_string() } else { format!("screen:{}", idx) },
-                    name: format!("Screen {} ({}x{})", idx + 1, width, height),
-                    source_type: "screen".to_string(),
-                    width: Some(width),
-                    height: Some(height),
-                });
-            }
-            BOOL(1)
-        }
-
-        let sources_ptr = &mut sources as *mut Vec<CaptureSource>;
-        let _ = EnumDisplayMonitors(None, None, Some(enum_monitors), LPARAM(sources_ptr as isize));
-    }
-
+    
+    // Always add desktop first
+    sources.push(CaptureSource {
+        id: "desktop".to_string(),
+        name: "Desktop (Full Screen)".to_string(),
+        source_type: "screen".to_string(),
+        width: None,
+        height: None,
+    });
+    
     // Enumerate windows
     unsafe {
-        unsafe extern "system" fn enum_windows(hwnd: HWND, lparam: LPARAM) -> BOOL {
-            let sources = unsafe { &mut *(lparam.0 as *mut Vec<CaptureSource>) };
-
-            if !unsafe { IsWindowVisible(hwnd).as_bool() } {
+        unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+            let sources = &mut *(lparam.0 as *mut Vec<CaptureSource>);
+            
+            // Skip invisible windows
+            if !IsWindowVisible(hwnd).as_bool() {
                 return BOOL(1);
             }
-
-            let title_len = unsafe { GetWindowTextLengthW(hwnd) };
+            
+            // Skip tool windows
+            let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32;
+            if ex_style & WS_EX_TOOLWINDOW.0 != 0 {
+                return BOOL(1);
+            }
+            
+            // Get window title
+            let title_len = GetWindowTextLengthW(hwnd);
             if title_len == 0 {
                 return BOOL(1);
             }
-
+            
             let mut title_buf = vec![0u16; (title_len + 1) as usize];
-            let len = unsafe { GetWindowTextW(hwnd, &mut title_buf) };
+            let len = GetWindowTextW(hwnd, &mut title_buf);
             if len == 0 {
                 return BOOL(1);
             }
-
+            
             let title = String::from_utf16_lossy(&title_buf[..len as usize]);
-
-            if title.is_empty()
-                || title == "Program Manager"
-                || title.starts_with("Windows Input Experience")
-                || title.starts_with("Microsoft Text Input")
-                || title.starts_with("NVIDIA GeForce")
-            {
+            
+            // Filter out system windows
+            let skip_titles = [
+                "Program Manager",
+                "Windows Input Experience",
+                "Microsoft Text Input",
+                "NVIDIA GeForce Overlay",
+                "AMD Software",
+                "Settings",
+                "Task View",
+                "Search",
+                "",
+            ];
+            
+            if skip_titles.iter().any(|&s| title.starts_with(s) || title == s) {
                 return BOOL(1);
             }
-
+            
+            // Get window size
             let mut rect = RECT::default();
-            if unsafe { GetWindowRect(hwnd, &mut rect).is_ok() } {
+            if GetWindowRect(hwnd, &mut rect).is_ok() {
                 let width = (rect.right - rect.left) as u32;
                 let height = (rect.bottom - rect.top) as u32;
-
-                if width < 100 || height < 100 {
+                
+                // Skip tiny windows
+                if width < 200 || height < 150 {
                     return BOOL(1);
                 }
-
+                
+                // Limit to 20 windows max
+                if sources.len() >= 21 {
+                    return BOOL(0); // Stop enumeration
+                }
+                
+                // Use title= format for gdigrab
+                let escaped_title = title.replace("\"", "\\\"");
                 sources.push(CaptureSource {
-                    id: format!("hwnd=0x{:X}", hwnd.0 as usize),
-                    name: if title.len() > 50 {
-                        format!("{}...", &title[..47])
+                    id: format!("title={}", escaped_title),
+                    name: if title.len() > 45 {
+                        format!("{}...", &title[..42])
                     } else {
                         title
                     },
@@ -201,14 +214,14 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
                     height: Some(height),
                 });
             }
-
+            
             BOOL(1)
         }
-
+        
         let sources_ptr = &mut sources as *mut Vec<CaptureSource>;
-        let _ = EnumWindows(Some(enum_windows), LPARAM(sources_ptr as isize));
+        let _ = EnumWindows(Some(enum_callback), LPARAM(sources_ptr as isize));
     }
-
+    
     Ok(sources)
 }
 
@@ -295,10 +308,7 @@ pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
     };
 
     if let Some(mut child) = child_opt {
-        if let Err(e) = child.write(b"q") {
-            log::warn!("Failed to send quit to FFmpeg: {}", e);
-        }
-        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        // Immediately kill FFmpeg - no graceful quit
         let _ = child.kill();
     }
 
@@ -438,9 +448,16 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             "-f".to_string(), "gdigrab".to_string(),
             "-draw_mouse".to_string(), "1".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
-            // Always use desktop for gdigrab (most reliable)
-            "-i".to_string(), "desktop".to_string(),
         ]);
+        
+        // Handle window capture vs desktop
+        if config.source_id.starts_with("title=") {
+            // Window capture: use title directly
+            args.extend(["-i".to_string(), config.source_id.clone()]);
+        } else {
+            // Desktop capture (default)
+            args.extend(["-i".to_string(), "desktop".to_string()]);
+        }
     }
 
     #[cfg(not(target_os = "windows"))]

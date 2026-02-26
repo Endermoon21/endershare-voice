@@ -174,7 +174,7 @@ export function createDefaultStreamConfig(
     width: 1280,
     height: 720,
     fps: 60,
-    bitrate: 6000, // 8 Mbps
+    bitrate: 10000, // 8 Mbps
     encoder,
     preset: getEncoderPreset(encoder, 'balanced'),
     audio_enabled: false, // Start without audio for simplicity
