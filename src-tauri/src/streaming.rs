@@ -483,7 +483,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bufsize".to_string(), format!("{}k", config.bitrate / 2),
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
-                "-g".to_string(), config.fps.to_string(),
+                "-g".to_string(), (config.fps * 2).to_string(),
                 "-keyint_min".to_string(), config.fps.to_string(),
                 "-rc-lookahead".to_string(), "0".to_string(),
             ]);
@@ -495,7 +495,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), config.fps.to_string(),
+                "-g".to_string(), (config.fps * 2).to_string(),
             ]);
         }
         "amf" => {
@@ -505,20 +505,20 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), config.fps.to_string(),
+                "-g".to_string(), (config.fps * 2).to_string(),
             ]);
         }
         _ => {
             // x264 fallback
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "ultrafast".to_string(),
+                "-preset".to_string(), "veryfast".to_string(),
                 "-tune".to_string(), "zerolatency".to_string(),
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / 60),
-                "-g".to_string(), config.fps.to_string(),
+                "-bufsize".to_string(), format!("{}k", config.bitrate),
+                "-g".to_string(), (config.fps * 2).to_string(),
             ]);
         }
     }
