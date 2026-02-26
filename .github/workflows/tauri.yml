@@ -24,7 +24,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Download FFmpeg
+      - name: Download FFmpeg (Linux)
         run: |
           mkdir -p src-tauri/binaries
           curl -L -o ffmpeg.tar.xz "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
@@ -91,16 +91,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Download FFmpeg
+      - name: Verify Windows FFmpeg (OpenSSL build from repo)
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path src-tauri/binaries
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
-          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-extract -Force
-          Copy-Item -Path "ffmpeg-extract/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe" -Destination "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" -Force
-          Write-Host "FFmpeg downloaded:"
-          Get-ChildItem src-tauri/binaries/
+          # Windows FFmpeg with OpenSSL is committed to the repo
+          # (BtbN builds use Schannel which doesn't support DTLS-SRTP)
+          if (Test-Path "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe") {
+            Write-Host "Windows FFmpeg (OpenSSL) found:"
+            Get-ChildItem src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
+          } else {
+            Write-Error "Windows FFmpeg not found in repo! Please commit the OpenSSL FFmpeg binary."
+            exit 1
+          }
 
       - name: Install cinny dependencies
         run: cd cinny && npm ci --legacy-peer-deps
