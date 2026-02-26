@@ -85,7 +85,7 @@ impl Default for StreamingState {
 pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
     #[cfg(target_os = "windows")]
     {
-        list_windows_sources()
+        Ok(vec![CaptureSource { id: "desktop".to_string(), name: "Desktop (Full Screen)".to_string(), source_type: "screen".to_string(), width: None, height: None }])
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -110,15 +110,6 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
     };
 
     let mut sources = Vec::new();
-    
-    // Always add desktop as first option
-    sources.push(CaptureSource {
-        id: "desktop".to_string(),
-        name: "Entire Desktop".to_string(),
-        source_type: "screen".to_string(),
-        width: None,
-        height: None,
-    });
 
     // Enumerate monitors (screens)
     unsafe {
@@ -141,19 +132,15 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
                 let rect = info.monitorInfo.rcMonitor;
                 let width = (rect.right - rect.left) as u32;
                 let height = (rect.bottom - rect.top) as u32;
-                // Count screens (skip desktop which is already added)
-                let idx = sources.iter().filter(|s| s.source_type == "screen" && s.id != "desktop").count();
+                let idx = sources.iter().filter(|s| s.source_type == "screen").count();
 
-                // Only add if not primary (primary is covered by "desktop")
-                if idx > 0 {
-                    sources.push(CaptureSource {
-                        id: format!("screen:{}", idx),
-                        name: format!("Monitor {} ({}x{})", idx + 1, width, height),
-                        source_type: "screen".to_string(),
-                        width: Some(width),
-                        height: Some(height),
-                    });
-                }
+                sources.push(CaptureSource {
+                    id: if idx == 0 { "desktop".to_string() } else { format!("screen:{}", idx) },
+                    name: format!("Screen {} ({}x{})", idx + 1, width, height),
+                    source_type: "screen".to_string(),
+                    width: Some(width),
+                    height: Some(height),
+                });
             }
             BOOL(1)
         }
@@ -184,16 +171,11 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
 
             let title = String::from_utf16_lossy(&title_buf[..len as usize]);
 
-            // Filter out system windows and small windows
             if title.is_empty()
                 || title == "Program Manager"
                 || title.starts_with("Windows Input Experience")
                 || title.starts_with("Microsoft Text Input")
                 || title.starts_with("NVIDIA GeForce")
-                || title.starts_with("AMD Software")
-                || title.starts_with("Settings")
-                || title == "Task View"
-                || title == "Calculator"
             {
                 return BOOL(1);
             }
@@ -203,15 +185,14 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
                 let width = (rect.right - rect.left) as u32;
                 let height = (rect.bottom - rect.top) as u32;
 
-                // Skip tiny windows
-                if width < 200 || height < 200 {
+                if width < 100 || height < 100 {
                     return BOOL(1);
                 }
 
                 sources.push(CaptureSource {
-                    id: format!("title={}", title.replace('"', "\\\"")),
-                    name: if title.len() > 40 {
-                        format!("{}...", &title[..37])
+                    id: format!("hwnd=0x{:X}", hwnd.0 as usize),
+                    name: if title.len() > 50 {
+                        format!("{}...", &title[..47])
                     } else {
                         title
                     },
@@ -247,8 +228,6 @@ pub async fn start_stream(
     }
 
     let ffmpeg_args = build_ffmpeg_args(&config)?;
-    
-    log::info!("[Streaming] Starting FFmpeg with args: {:?}", ffmpeg_args);
 
     let (mut rx, child) = Command::new_sidecar("ffmpeg")
         .map_err(|e| format!("Failed to create FFmpeg sidecar: {}", e))?
@@ -284,16 +263,11 @@ pub async fn start_stream(
             match event {
                 CommandEvent::Stderr(line) => {
                     log::debug!("[FFmpeg] {}", line);
-                    // Track errors but don't spam with warnings
-                    if line.contains("Error") || line.contains("error:") || line.contains("fatal") {
-                        log::error!("[FFmpeg ERROR] {}", line);
+                    if line.contains("Error") || line.contains("error") {
                         if let Ok(mut error) = shared.last_error.lock() {
                             *error = Some(line);
                         }
                     }
-                }
-                CommandEvent::Stdout(line) => {
-                    log::debug!("[FFmpeg stdout] {}", line);
                 }
                 CommandEvent::Terminated(payload) => {
                     log::info!("[FFmpeg] Exited with code: {:?}", payload.code);
@@ -321,12 +295,10 @@ pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
     };
 
     if let Some(mut child) = child_opt {
-        // Try graceful quit first
         if let Err(e) = child.write(b"q") {
             log::warn!("Failed to send quit to FFmpeg: {}", e);
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-        // Force kill if still running
         let _ = child.kill();
     }
 
@@ -437,48 +409,37 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
     })
 }
 
-/// Build FFmpeg command arguments - optimized for quality + low latency
+/// Build FFmpeg command arguments - optimized for smooth frame capture
 fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     let mut args = Vec::new();
 
-    // Global options
+    // Global options - minimal latency
     args.extend([
         "-hide_banner".to_string(),
         "-loglevel".to_string(), "info".to_string(),
-        "-fflags".to_string(), "+genpts".to_string(),
+        "-fflags".to_string(), "+genpts+discardcorrupt".to_string(),
         "-flags".to_string(), "low_delay".to_string(),
         "-y".to_string(),
+        "-threads".to_string(), "1".to_string(),
     ]);
 
-    // Input source handling
+    // Input source (Windows gdigrab) with buffering for smooth capture
     #[cfg(target_os = "windows")]
     {
         args.extend([
-            // Input buffering
-            "-rtbufsize".to_string(), "512M".to_string(),
-            "-thread_queue_size".to_string(), "512".to_string(),
+            // Input buffering - critical for smooth capture
+            "-rtbufsize".to_string(), "256M".to_string(),
+            "-thread_queue_size".to_string(), "1024".to_string(),
             // Fast probing
             "-probesize".to_string(), "32".to_string(),
             "-analyzeduration".to_string(), "0".to_string(),
-            // GDI grab
+            // GDI grab with draw mouse for timing reference
             "-f".to_string(), "gdigrab".to_string(),
             "-draw_mouse".to_string(), "1".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
+            // Always use desktop for gdigrab (most reliable)
+            "-i".to_string(), "desktop".to_string(),
         ]);
-        
-        // Handle different capture sources
-        if config.source_id == "desktop" {
-            args.extend(["-i".to_string(), "desktop".to_string()]);
-        } else if config.source_id.starts_with("title=") {
-            // Window capture by title
-            args.extend(["-i".to_string(), config.source_id.clone()]);
-        } else if config.source_id.starts_with("screen:") {
-            // For multi-monitor, still use desktop but could add offset later
-            args.extend(["-i".to_string(), "desktop".to_string()]);
-        } else {
-            // Fallback to desktop
-            args.extend(["-i".to_string(), "desktop".to_string()]);
-        }
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -502,73 +463,66 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         }
     }
 
-    // Video filter - use better scaling algorithm
+    // Video filter with fast scaling
     args.extend([
         "-vf".to_string(),
-        format!("scale={}:{}:flags=bilinear,fps={}", config.width, config.height, config.fps),
+        format!("scale={}:{}:flags=fast_bilinear,fps={}", config.width, config.height, config.fps),
     ]);
 
-    // Video encoder settings - balanced quality vs latency
+    // Video encoder with ultra-low latency settings
     match config.encoder.as_str() {
         "nvenc" => {
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), "p3".to_string(),  // Better quality than p1
-                "-tune".to_string(), "ll".to_string(),    // Low latency (not ultra)
-                "-rc".to_string(), "vbr".to_string(),     // VBR for better quality
-                "-cq".to_string(), "23".to_string(),      // Quality target
+                "-preset".to_string(), "p1".to_string(),
+                "-tune".to_string(), "ull".to_string(),
+                "-rc".to_string(), "cbr".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
-                "-bufsize".to_string(), format!("{}k", config.bitrate),  // Full second buffer
-                "-profile:v".to_string(), "high".to_string(),  // Better compression
-                "-bf".to_string(), "0".to_string(),        // No B-frames for latency
-                "-g".to_string(), (config.fps * 2).to_string(),  // Keyframe every 2 sec
+                "-maxrate".to_string(), format!("{}k", config.bitrate),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 2),
+                "-profile:v".to_string(), "baseline".to_string(),
+                "-bf".to_string(), "0".to_string(),
+                "-g".to_string(), config.fps.to_string(),
                 "-keyint_min".to_string(), config.fps.to_string(),
-                "-rc-lookahead".to_string(), "8".to_string(),  // Small lookahead for quality
+                "-rc-lookahead".to_string(), "0".to_string(),
             ]);
         }
         "qsv" => {
             args.extend([
                 "-c:v".to_string(), "h264_qsv".to_string(),
-                "-preset".to_string(), "fast".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-preset".to_string(), "veryfast".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
-                "-bufsize".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
         "amf" => {
             args.extend([
                 "-c:v".to_string(), "h264_amf".to_string(),
-                "-usage".to_string(), "lowlatency".to_string(),
-                "-quality".to_string(), "balanced".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-usage".to_string(), "ultralowlatency".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
-                "-bufsize".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
         _ => {
-            // x264 fallback - improved quality
+            // x264 fallback
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "veryfast".to_string(),  // Better than ultrafast
+                "-preset".to_string(), "ultrafast".to_string(),
                 "-tune".to_string(), "zerolatency".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
-                "-crf".to_string(), "23".to_string(),  // Quality-based encoding
-                "-maxrate".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate),  // Full buffer
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-b:v".to_string(), format!("{}k", config.bitrate),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 60),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
     }
 
-    // Pixel format
+    // Pixel format for maximum compatibility
     args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
 
     // Audio encoder
@@ -583,9 +537,11 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         args.push("-an".to_string());
     }
 
-    // Output settings
+    // Constant frame rate output
+    args.extend(["-vsync".to_string(), "cfr".to_string()]);
+
+    // WHIP output with immediate flush
     args.extend([
-        "-vsync".to_string(), "cfr".to_string(),
         "-flush_packets".to_string(), "1".to_string(),
         "-whip_flags".to_string(), "dtls_active".to_string(),
         "-f".to_string(), "whip".to_string(),
