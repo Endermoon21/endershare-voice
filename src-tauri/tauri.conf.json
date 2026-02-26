@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny",
-    "version": "4.10.39"
+    "version": "4.10.40"
   },
   "build": {
     "withGlobalTauri": true,
@@ -23,6 +23,8 @@
         "icons/icon.ico"
       ],
       "resources": {
+        "binaries/ffmpeg-x86_64-pc-windows-msvc.exe": "ffmpeg.exe",
+        "binaries/ffmpeg-x86_64-unknown-linux-gnu": "ffmpeg",
         "resources/WebView2Loader.dll": ""
       },
       "externalBin": [
