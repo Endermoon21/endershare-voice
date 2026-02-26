@@ -520,7 +520,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
                 "-bufsize".to_string(), format!("{}k", config.bitrate),  // Full second buffer
-                "-profile:v".to_string(), "high".to_string(),  // Better compression
+                "-profile:v".to_string(), "baseline".to_string(),  // Better compression
                 "-bf".to_string(), "0".to_string(),        // No B-frames for latency
                 "-g".to_string(), (config.fps * 2).to_string(),  // Keyframe every 2 sec
                 "-keyint_min".to_string(), config.fps.to_string(),
@@ -531,7 +531,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             args.extend([
                 "-c:v".to_string(), "h264_qsv".to_string(),
                 "-preset".to_string(), "fast".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
@@ -544,7 +544,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-c:v".to_string(), "h264_amf".to_string(),
                 "-usage".to_string(), "lowlatency".to_string(),
                 "-quality".to_string(), "balanced".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", (config.bitrate as f32 * 1.5) as u32),
@@ -556,11 +556,11 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             // x264 fallback - improved quality
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "veryfast".to_string(),  // Better than ultrafast
+                "-preset".to_string(), "faster".to_string(),
                 "-tune".to_string(), "zerolatency".to_string(),
-                "-profile:v".to_string(), "high".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
-                "-crf".to_string(), "23".to_string(),  // Quality-based encoding
+                "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", config.bitrate),
                 "-bufsize".to_string(), format!("{}k", config.bitrate),  // Full buffer
                 "-g".to_string(), (config.fps * 2).to_string(),
