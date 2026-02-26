@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny",
-    "version": "4.10.34"
+    "version": "4.10.35"
   },
   "build": {
     "withGlobalTauri": true,

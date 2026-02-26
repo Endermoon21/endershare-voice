@@ -437,18 +437,8 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             "-f".to_string(), "gdigrab".to_string(),
             "-draw_mouse".to_string(), "1".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
-            // Handle different source types for gdigrab
-            "-i".to_string(), 
-            if config.source_id.starts_with("hwnd=") {
-                // For window capture, we need to use title= format
-                // But hwnd capture isn't directly supported, so fall back to desktop
-                "desktop".to_string()
-            } else if config.source_id == "desktop" || config.source_id.starts_with("screen:") {
-                "desktop".to_string()
-            } else {
-                // Assume it's a window title
-                format!("title={}", config.source_id)
-            },
+            // Always use desktop for gdigrab (most reliable)
+            "-i".to_string(), "desktop".to_string(),
         ]);
     }
 

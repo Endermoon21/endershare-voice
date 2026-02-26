@@ -621,7 +621,7 @@ export const ViewerThumbSpeaking = style({
 export const ViewerThumbMuted = style({
   position: "relative",
   "::after": {
-    content: ,
+    content: "''",
     position: "absolute",
     bottom: "-2px",
     right: "-2px",
