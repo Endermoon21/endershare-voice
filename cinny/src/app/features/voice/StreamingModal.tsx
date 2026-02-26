@@ -281,10 +281,28 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
     // Find screen share track in the room
     const findAndAttachScreenShare = () => {
       for (const participant of room.remoteParticipants.values()) {
+        // Check for standard screen share track
         const screenTrack = participant.getTrackPublication(Track.Source.ScreenShare);
         if (screenTrack?.track && previewVideoRef.current) {
           (screenTrack.track as any).attach(previewVideoRef.current);
           return true;
+        }
+        
+        // Check for WHIP ingress streams (participant identity ends with -stream)
+        if (participant.identity.endsWith("-stream")) {
+          // Try Camera source (WHIP might publish as Camera)
+          const cameraTrack = participant.getTrackPublication(Track.Source.Camera);
+          if (cameraTrack?.track && previewVideoRef.current) {
+            (cameraTrack.track as any).attach(previewVideoRef.current);
+            return true;
+          }
+          // Try any video track
+          for (const pub of participant.videoTrackPublications.values()) {
+            if (pub.track && previewVideoRef.current) {
+              (pub.track as any).attach(previewVideoRef.current);
+              return true;
+            }
+          }
         }
       }
       return false;

@@ -106,6 +106,24 @@ const VoiceChannelIcon = () => (
   </svg>
 );
 
+const FullscreenIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+  </svg>
+);
+
+const PipIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2"/><rect x="10" y="9" width="10" height="7" rx="1"/>
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
 const VolumeHighIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
@@ -264,6 +282,7 @@ export function VoiceRoom() {
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
+  const [showStreamOverlay, setShowStreamOverlay] = useState(false);
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -334,15 +353,88 @@ export function VoiceRoom() {
 
       <div className={css.MainArea}>
         {screenShareInfo ? (
-          <div className={css.ScreenShareSection}>
+          <div 
+            className={css.ScreenShareSection}
+            onMouseEnter={() => setShowStreamOverlay(true)}
+            onMouseLeave={() => setShowStreamOverlay(false)}
+          >
             <div ref={videoContainerRef} className={css.VideoContainer} />
-            <div className={css.ScreenShareLabel}>
-              <ScreenShareSmallIcon />
-              {profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}'s screen
+            
+            {/* Stream overlay with controls */}
+            <div className={classNames(css.StreamOverlay, { [css.StreamOverlayVisible]: showStreamOverlay })}>
+              {/* Top bar - streamer info */}
+              <div className={css.StreamTopBar}>
+                <div className={css.StreamerBadge}>
+                  <div className={css.StreamerAvatar}>
+                    {profileCache[screenShareInfo.participantIdentity]?.avatarUrl ? (
+                      <img src={profileCache[screenShareInfo.participantIdentity]?.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      (profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName).charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <span className={css.StreamerName}>
+                    {profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}
+                  </span>
+                  <span className={css.LiveBadge}>LIVE</span>
+                </div>
+                
+                <div className={css.ViewerCount}>
+                  <UsersIcon />
+                  {participants.length}
+                </div>
+              </div>
+              
+              {/* Bottom bar - controls */}
+              <div className={css.StreamBottomBar}>
+                <div />
+                <div className={css.StreamControls}>
+                  <button 
+                    className={css.StreamControlBtn} 
+                    onClick={() => {
+                      const video = videoContainerRef.current?.querySelector("video");
+                      if (video && document.pictureInPictureEnabled) {
+                        video.requestPictureInPicture().catch(console.error);
+                      }
+                    }}
+                    title="Picture in Picture"
+                  >
+                    <PipIcon />
+                  </button>
+                  <button 
+                    className={css.StreamControlBtn}
+                    onClick={() => {
+                      if (videoContainerRef.current) {
+                        if (document.fullscreenElement) {
+                          document.exitFullscreen();
+                        } else {
+                          videoContainerRef.current.requestFullscreen().catch(console.error);
+                        }
+                      }
+                    }}
+                    title="Fullscreen"
+                  >
+                    <FullscreenIcon />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className={css.ScreenShareParticipants}>
-              {participants.map((p) => (
-                <ParticipantTile key={p.identity} participant={p} avatarUrl={profileCache[p.identity]?.avatarUrl} displayName={profileCache[p.identity]?.displayName || p.name} />
+            
+            {/* Viewer thumbnails at bottom */}
+            <div className={css.ViewerThumbnails}>
+              {participants.filter(p => !p.identity.endsWith("-stream")).map((p) => (
+                <div 
+                  key={p.identity} 
+                  className={classNames(css.ViewerThumb, {
+                    [css.ViewerThumbSpeaking]: p.isSpeaking,
+                  })}
+                  title={profileCache[p.identity]?.displayName || p.name}
+                >
+                  {profileCache[p.identity]?.avatarUrl ? (
+                    <img src={profileCache[p.identity]?.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    (profileCache[p.identity]?.displayName || p.name).charAt(0).toUpperCase()
+                  )}
+                </div>
               ))}
             </div>
           </div>

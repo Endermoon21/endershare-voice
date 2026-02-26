@@ -472,3 +472,185 @@ export const StatusBadge = style({});
 export const StatusMuted = style({});
 export const StatusSharing = style({});
 export const SpeakingRing = style({});
+
+// Enhanced stream display (Discord-style)
+export const StreamOverlay = style({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
+  pointerEvents: "none",
+  opacity: 0,
+  transition: "opacity 0.2s ease",
+  ":hover": {
+    opacity: 1,
+  },
+});
+
+export const StreamOverlayVisible = style({
+  opacity: 1,
+});
+
+export const StreamTopBar = style({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  padding: "12px",
+  background: "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
+  pointerEvents: "auto",
+});
+
+export const StreamBottomBar = style({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-end",
+  padding: "12px",
+  background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
+  pointerEvents: "auto",
+});
+
+export const StreamerBadge = style({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  backgroundColor: "rgba(0, 0, 0, 0.75)",
+  padding: "6px 12px",
+  borderRadius: "4px",
+  backdropFilter: "blur(8px)",
+});
+
+export const StreamerAvatar = style({
+  width: "24px",
+  height: "24px",
+  borderRadius: "50%",
+  backgroundColor: "#5865f2",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "#fff",
+  overflow: "hidden",
+});
+
+export const StreamerName = style({
+  fontSize: "13px",
+  fontWeight: 500,
+  color: "#fff",
+});
+
+export const LiveBadge = style({
+  backgroundColor: "#ed4245",
+  color: "#fff",
+  padding: "2px 6px",
+  borderRadius: "3px",
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.02em",
+});
+
+export const StreamControls = style({
+  display: "flex",
+  gap: "8px",
+});
+
+export const StreamControlBtn = style({
+  width: "36px",
+  height: "36px",
+  borderRadius: "4px",
+  border: "none",
+  backgroundColor: "rgba(0, 0, 0, 0.6)",
+  color: "#fff",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "background-color 0.15s ease",
+  ":hover": {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+});
+
+export const ViewerCount = style({
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  color: "#fff",
+  fontSize: "13px",
+  fontWeight: 500,
+  backgroundColor: "rgba(0, 0, 0, 0.6)",
+  padding: "6px 10px",
+  borderRadius: "4px",
+});
+
+export const ViewerThumbnails = style({
+  display: "flex",
+  gap: "4px",
+  padding: "12px",
+  justifyContent: "center",
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backdropFilter: "blur(8px)",
+  borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+});
+
+export const ViewerThumb = style({
+  width: "48px",
+  height: "48px",
+  borderRadius: "8px",
+  backgroundColor: "#5865f2",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "18px",
+  fontWeight: 600,
+  color: "#fff",
+  overflow: "hidden",
+  border: "2px solid transparent",
+  transition: "border-color 0.15s ease",
+});
+
+export const ViewerThumbSpeaking = style({
+  borderColor: "#23a55a",
+});
+
+export const ViewerThumbMuted = style({
+  position: "relative",
+  "::after": {
+    content: ,
+    position: "absolute",
+    bottom: "-2px",
+    right: "-2px",
+    width: "14px",
+    height: "14px",
+    backgroundColor: "#ed4245",
+    borderRadius: "50%",
+    border: "2px solid #111214",
+  },
+});
+
+export const StreamLoading = style({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "16px",
+  color: "#b5bac1",
+  flex: 1,
+});
+
+export const StreamLoadingSpinner = style({
+  width: "48px",
+  height: "48px",
+  border: "3px solid rgba(255, 255, 255, 0.1)",
+  borderTopColor: "#5865f2",
+  borderRadius: "50%",
+  animation: "spin 1s linear infinite",
+  "@keyframes spin": {
+    "to": { transform: "rotate(360deg)" },
+  },
+});
