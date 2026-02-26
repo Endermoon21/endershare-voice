@@ -23,8 +23,6 @@
         "icons/icon.ico"
       ],
       "resources": {
-        "binaries/ffmpeg-x86_64-pc-windows-msvc.exe": "ffmpeg.exe",
-        "binaries/ffmpeg-x86_64-unknown-linux-gnu": "ffmpeg",
         "resources/WebView2Loader.dll": ""
       },
       "externalBin": [
