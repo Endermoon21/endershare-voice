@@ -46,6 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
         with:
+          tauriScript: npm run tauri
           tagName: v__VERSION__
           releaseName: "Cinny v__VERSION__"
           releaseBody: "See assets below to download and install."
@@ -90,27 +91,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Download and verify FFmpeg
+      - name: Download FFmpeg
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path src-tauri/binaries
           $ProgressPreference = 'SilentlyContinue'
-          Write-Host "Downloading FFmpeg..."
           Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
-          Write-Host "Extracting FFmpeg..."
           Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-extract -Force
-          Write-Host "Copying FFmpeg binary..."
           Copy-Item -Path "ffmpeg-extract/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe" -Destination "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe" -Force
-          Write-Host "Verifying FFmpeg..."
-          $ffmpegPath = "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe"
-          if (Test-Path $ffmpegPath) {
-            $size = (Get-Item $ffmpegPath).Length
-            Write-Host "FFmpeg binary found: $size bytes"
-          } else {
-            Write-Error "FFmpeg binary NOT FOUND at $ffmpegPath"
-            exit 1
-          }
-          Write-Host "Binaries directory contents:"
           Get-ChildItem src-tauri/binaries/
 
       - name: Install cinny dependencies
@@ -125,6 +113,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
         with:
+          tauriScript: npm run tauri
           tagName: v__VERSION__
           releaseName: "Cinny v__VERSION__"
           releaseBody: "See assets below to download and install."
