@@ -420,6 +420,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         "-fflags".to_string(), "+genpts+discardcorrupt".to_string(),
         "-flags".to_string(), "low_delay".to_string(),
         "-y".to_string(),
+        "-nostdin".to_string(),
         "-threads".to_string(), "1".to_string(),
     ]);
 
