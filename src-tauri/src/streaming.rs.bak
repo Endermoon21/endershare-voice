@@ -4,11 +4,6 @@
 //! - Screen/window enumeration via Windows API
 //! - FFmpeg sidecar management for WHIP streaming
 //! - Stream status monitoring
-//!
-//! Verified against:
-//! - FFmpeg WHIP muxer (merged June 2025)
-//! - Tauri 1.x sidecar API
-//! - Windows 0.62 crate
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -94,7 +89,6 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // Fallback for non-Windows
         Ok(vec![CaptureSource {
             id: "desktop".to_string(),
             name: "Desktop".to_string(),
@@ -133,7 +127,7 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
             if unsafe { GetMonitorInfoW(monitor, &mut info.monitorInfo as *mut _ as *mut _).as_bool() } {
                 let name_slice = &info.szDevice[..];
                 let name_end = name_slice.iter().position(|&c| c == 0).unwrap_or(32);
-                let name = String::from_utf16_lossy(&name_slice[..name_end]);
+                let _name = String::from_utf16_lossy(&name_slice[..name_end]);
 
                 let rect = info.monitorInfo.rcMonitor;
                 let width = (rect.right - rect.left) as u32;
@@ -141,7 +135,6 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
                 let idx = sources.iter().filter(|s| s.source_type == "screen").count();
 
                 sources.push(CaptureSource {
-                    // Use "desktop" for first screen (gdigrab convention)
                     id: if idx == 0 { "desktop".to_string() } else { format!("screen:{}", idx) },
                     name: format!("Screen {} ({}x{})", idx + 1, width, height),
                     source_type: "screen".to_string(),
@@ -178,7 +171,6 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
 
             let title = String::from_utf16_lossy(&title_buf[..len as usize]);
 
-            // Skip system windows
             if title.is_empty()
                 || title == "Program Manager"
                 || title.starts_with("Windows Input Experience")
@@ -193,12 +185,10 @@ fn list_windows_sources() -> Result<Vec<CaptureSource>, String> {
                 let width = (rect.right - rect.left) as u32;
                 let height = (rect.bottom - rect.top) as u32;
 
-                // Skip tiny windows
                 if width < 100 || height < 100 {
                     return BOOL(1);
                 }
 
-                // Store HWND as hex for FFmpeg gdigrab
                 sources.push(CaptureSource {
                     id: format!("hwnd=0x{:X}", hwnd.0 as usize),
                     name: if title.len() > 50 {
@@ -230,7 +220,6 @@ pub async fn start_stream(
 ) -> Result<(), String> {
     let state = app.state::<StreamingState>();
 
-    // Check if already streaming
     {
         let child = state.ffmpeg_child.lock().map_err(|e| e.to_string())?;
         if child.is_some() {
@@ -238,17 +227,14 @@ pub async fn start_stream(
         }
     }
 
-    // Build FFmpeg arguments
     let ffmpeg_args = build_ffmpeg_args(&config)?;
 
-    // Start FFmpeg sidecar
     let (mut rx, child) = Command::new_sidecar("ffmpeg")
         .map_err(|e| format!("Failed to create FFmpeg sidecar: {}", e))?
         .args(&ffmpeg_args)
         .spawn()
         .map_err(|e| format!("Failed to spawn FFmpeg: {}", e))?;
 
-    // Store state
     {
         let mut child_lock = state.ffmpeg_child.lock().map_err(|e| e.to_string())?;
         *child_lock = Some(child);
@@ -270,18 +256,13 @@ pub async fn start_stream(
         *running = true;
     }
 
-    // Clone the shared state for the background task
     let shared = state.shared.clone();
 
-    // Monitor FFmpeg output in background
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stderr(line) => {
-                    // FFmpeg outputs progress to stderr
                     log::debug!("[FFmpeg] {}", line);
-
-                    // Check for errors
                     if line.contains("Error") || line.contains("error") {
                         if let Ok(mut error) = shared.last_error.lock() {
                             *error = Some(line);
@@ -290,8 +271,6 @@ pub async fn start_stream(
                 }
                 CommandEvent::Terminated(payload) => {
                     log::info!("[FFmpeg] Exited with code: {:?}", payload.code);
-
-                    // Mark as not running
                     if let Ok(mut running) = shared.is_running.lock() {
                         *running = false;
                     }
@@ -310,24 +289,19 @@ pub async fn start_stream(
 pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
     let state = app.state::<StreamingState>();
 
-    // Take the child out of the mutex (don't hold lock across await)
     let child_opt = {
         let mut child_lock = state.ffmpeg_child.lock().map_err(|e| e.to_string())?;
         child_lock.take()
     };
 
     if let Some(mut child) = child_opt {
-        // Send 'q' to FFmpeg for graceful shutdown
         if let Err(e) = child.write(b"q") {
             log::warn!("Failed to send quit to FFmpeg: {}", e);
         }
-
-        // Wait briefly then kill if still running
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         let _ = child.kill();
     }
 
-    // Clear state
     {
         let mut config = state.current_config.lock().map_err(|e| e.to_string())?;
         *config = None;
@@ -372,7 +346,6 @@ pub async fn get_stream_status(app: AppHandle) -> Result<StreamStatus, String> {
 /// Check FFmpeg availability and capabilities
 #[tauri::command]
 pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
-    // Check if FFmpeg sidecar exists
     let version_result = Command::new_sidecar("ffmpeg")
         .map_err(|e| e.to_string())?
         .args(["-version"])
@@ -390,7 +363,6 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
         }
     };
 
-    // stdout is already a String in Tauri's sidecar output
     let version_str = &version_output.stdout;
     let version = version_str
         .lines()
@@ -398,7 +370,6 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
         .and_then(|l| l.split_whitespace().nth(2))
         .map(|s| s.to_string());
 
-    // Check encoders
     let encoders_output = Command::new_sidecar("ffmpeg")
         .map_err(|e| e.to_string())?
         .args(["-encoders", "-hide_banner"])
@@ -421,7 +392,6 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
         encoders.push("x264".to_string());
     }
 
-    // Check WHIP muxer support
     let formats_output = Command::new_sidecar("ffmpeg")
         .map_err(|e| e.to_string())?
         .args(["-muxers", "-hide_banner"])
@@ -439,44 +409,46 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
     })
 }
 
-/// Build FFmpeg command arguments
+/// Build FFmpeg command arguments - optimized for smooth frame capture
 fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     let mut args = Vec::new();
 
-    // Global options
+    // Global options - minimal latency
     args.extend([
         "-hide_banner".to_string(),
-        "-loglevel".to_string(),
-        "warning".to_string(),
-        "-y".to_string(), // Overwrite
+        "-loglevel".to_string(), "info".to_string(),
+        "-fflags".to_string(), "+genpts+discardcorrupt".to_string(),
+        "-flags".to_string(), "low_delay".to_string(),
+        "-y".to_string(),
+        "-threads".to_string(), "1".to_string(),
     ]);
 
-    // Input source (Windows gdigrab)
+    // Input source (Windows gdigrab) with buffering for smooth capture
     #[cfg(target_os = "windows")]
     {
         args.extend([
-            "-f".to_string(),
-            "gdigrab".to_string(),
-            "-framerate".to_string(),
-            config.fps.to_string(),
+            // Input buffering - critical for smooth capture
+            "-rtbufsize".to_string(), "256M".to_string(),
+            "-thread_queue_size".to_string(), "1024".to_string(),
+            // Fast probing
+            "-probesize".to_string(), "32".to_string(),
+            "-analyzeduration".to_string(), "0".to_string(),
+            // GDI grab with draw mouse for timing reference
+            "-f".to_string(), "gdigrab".to_string(),
+            "-draw_mouse".to_string(), "1".to_string(),
+            "-framerate".to_string(), config.fps.to_string(),
+            // Always use desktop for gdigrab (most reliable)
+            "-i".to_string(), "desktop".to_string(),
         ]);
-
-        // Source ID is either "desktop" or "hwnd=0xXXXX"
-        args.extend(["-i".to_string(), config.source_id.clone()]);
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        // Linux x11grab
         args.extend([
-            "-f".to_string(),
-            "x11grab".to_string(),
-            "-framerate".to_string(),
-            config.fps.to_string(),
-            "-video_size".to_string(),
-            format!("{}x{}", config.width, config.height),
-            "-i".to_string(),
-            ":0.0".to_string(),
+            "-f".to_string(), "x11grab".to_string(),
+            "-framerate".to_string(), config.fps.to_string(),
+            "-video_size".to_string(), format!("{}x{}", config.width, config.height),
+            "-i".to_string(), ":0.0".to_string(),
         ]);
     }
 
@@ -485,33 +457,34 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         #[cfg(target_os = "windows")]
         {
             args.extend([
-                "-f".to_string(),
-                "dshow".to_string(),
-                "-i".to_string(),
-                "audio=virtual-audio-capturer".to_string(),
+                "-f".to_string(), "dshow".to_string(),
+                "-i".to_string(), "audio=virtual-audio-capturer".to_string(),
             ]);
         }
     }
 
-    // Video scaling if needed
+    // Video filter with fast scaling
     args.extend([
         "-vf".to_string(),
-        format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+        format!("scale={}:{}:flags=fast_bilinear,fps={}", config.width, config.height, config.fps),
     ]);
 
-    // Video encoder with verified settings
+    // Video encoder with ultra-low latency settings
     match config.encoder.as_str() {
         "nvenc" => {
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), config.preset.clone(), // p1-p7
-                "-tune".to_string(), "ll".to_string(),        // Low latency
-                "-bf".to_string(), "0".to_string(),           // No B-frames (WebRTC requirement)
-                "-profile:v".to_string(), "baseline".to_string(), // Maximum compatibility
-                "-rc".to_string(), "cbr".to_string(),         // Constant bitrate
+                "-preset".to_string(), "p1".to_string(),
+                "-tune".to_string(), "ull".to_string(),
+                "-rc".to_string(), "cbr".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / config.fps), // Minimal buffer
-                "-g".to_string(), (config.fps * 2).to_string(), // Keyframe every 2 sec
+                "-maxrate".to_string(), format!("{}k", config.bitrate),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 2),
+                "-profile:v".to_string(), "baseline".to_string(),
+                "-bf".to_string(), "0".to_string(),
+                "-g".to_string(), config.fps.to_string(),
+                "-keyint_min".to_string(), config.fps.to_string(),
+                "-rc-lookahead".to_string(), "0".to_string(),
             ]);
         }
         "qsv" => {
@@ -521,7 +494,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
         "amf" => {
@@ -531,7 +504,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
         _ => {
@@ -543,13 +516,16 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / config.fps),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 60),
+                "-g".to_string(), config.fps.to_string(),
             ]);
         }
     }
 
-    // Audio encoder (Opus for WebRTC)
+    // Pixel format for maximum compatibility
+    args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
+
+    // Audio encoder
     if config.audio_enabled {
         args.extend([
             "-c:a".to_string(), "libopus".to_string(),
@@ -561,15 +537,22 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         args.push("-an".to_string());
     }
 
-    // Output: WHIP muxer
-    args.extend(["-f".to_string(), "whip".to_string()]);
+    // Constant frame rate output
+    args.extend(["-vsync".to_string(), "cfr".to_string()]);
 
-    // Bearer token authorization (if provided)
+    // WHIP output with immediate flush
+    args.extend([
+        "-flush_packets".to_string(), "1".to_string(),
+        "-whip_flags".to_string(), "dtls_active".to_string(),
+        "-f".to_string(), "whip".to_string(),
+    ]);
+
+    // Bearer token
     if let Some(ref token) = config.bearer_token {
         args.extend(["-authorization".to_string(), token.clone()]);
     }
 
-    // WHIP endpoint URL
+    // WHIP endpoint
     args.push(config.whip_url.clone());
 
     Ok(args)

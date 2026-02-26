@@ -85,7 +85,7 @@ impl Default for StreamingState {
 pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
     #[cfg(target_os = "windows")]
     {
-        list_windows_sources()
+        Ok(vec![CaptureSource { id: "desktop".to_string(), name: "Desktop (Full Screen)".to_string(), source_type: "screen".to_string(), width: None, height: None }])
     }
     #[cfg(not(target_os = "windows"))]
     {
