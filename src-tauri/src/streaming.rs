@@ -500,17 +500,26 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 ]);
             }
         } else if config.encoder == "nvenc" {
-            // Desktop + NVENC: use ddagrab via lavfi input
-            // ddagrab captures D3D11 frames, hwdownload brings to CPU, scale resizes
+            // Desktop + NVENC: use gdigrab with pixel format conversion
+            // Note: ddagrab + NVENC crashes (ShareX issue #7326), use gdigrab instead
+            // gdigrab outputs bgra, must convert to nv12 for NVENC
             args.extend([
-                "-f".to_string(), "lavfi".to_string(),
-                "-i".to_string(),
-                format!(
-                    "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra",
-                    config.fps
-                ),
+                "-rtbufsize".to_string(), "64M".to_string(),
+                "-thread_queue_size".to_string(), "512".to_string(),
+                "-probesize".to_string(), "32".to_string(),
+                "-analyzeduration".to_string(), "0".to_string(),
+                "-f".to_string(), "gdigrab".to_string(),
+                "-draw_mouse".to_string(), "1".to_string(),
+                "-framerate".to_string(), config.fps.to_string(),
+                "-video_size".to_string(), format!("{}x{}", config.width, config.height),
+                "-offset_x".to_string(), "0".to_string(),
+                "-offset_y".to_string(), "0".to_string(),
+                "-i".to_string(), "desktop".to_string(),
+            ]);
+            // Scale and convert bgra to nv12 for NVENC compatibility
+            args.extend([
                 "-vf".to_string(),
-                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+                format!("scale={}:{}:flags=fast_bilinear,format=nv12", config.width, config.height),
             ]);
         } else {
             // Desktop + x264/other: use gdigrab (CPU-based capture)
