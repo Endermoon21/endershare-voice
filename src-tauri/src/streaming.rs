@@ -523,6 +523,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             ]);
         } else {
             // Desktop + x264/other: use gdigrab (CPU-based capture)
+            // Capture full desktop, then scale to target resolution
             args.extend([
                 "-rtbufsize".to_string(), "64M".to_string(),
                 "-thread_queue_size".to_string(), "512".to_string(),
@@ -531,10 +532,12 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-f".to_string(), "gdigrab".to_string(),
                 "-draw_mouse".to_string(), "1".to_string(),
                 "-framerate".to_string(), config.fps.to_string(),
-                "-video_size".to_string(), format!("{}x{}", config.width, config.height),
-                "-offset_x".to_string(), "0".to_string(),
-                "-offset_y".to_string(), "0".to_string(),
                 "-i".to_string(), "desktop".to_string(),
+            ]);
+            // Scale full desktop to target resolution
+            args.extend([
+                "-vf".to_string(),
+                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
             ]);
         }
     }
