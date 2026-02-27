@@ -501,9 +501,12 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 config.fps, config.width, config.height
             );
             args.extend([
+                // D3D11 hardware device for ddagrab + NVENC pipeline
+                "-init_hw_device".to_string(), "d3d11va".to_string(),
                 "-probesize".to_string(), "32".to_string(),
                 "-analyzeduration".to_string(), "0".to_string(),
-                "-filter_complex".to_string(), ddagrab_filter,
+                "-f".to_string(), "lavfi".to_string(),
+                "-i".to_string(), ddagrab_filter,
             ]);
         }
     }
@@ -526,19 +529,24 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     match config.encoder.as_str() {
 
         "nvenc" => {
+            // NVENC ultra-low latency for WHIP streaming
+            // bufsize = bitrate/fps for true zero-latency
+            let bufsize_kb = config.bitrate / config.fps;
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), "p1".to_string(),
-                "-tune".to_string(), "ull".to_string(),
+                "-preset".to_string(), "p1".to_string(),           // Fastest
+                "-tune".to_string(), "ull".to_string(),            // Ultra-low latency
                 "-rc".to_string(), "cbr".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
+                "-bufsize".to_string(), format!("{}k", bufsize_kb),
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-g".to_string(), (config.fps * 2).to_string(),
                 "-keyint_min".to_string(), config.fps.to_string(),
                 "-rc-lookahead".to_string(), "0".to_string(),
+                "-zerolatency".to_string(), "1".to_string(),
+                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         "qsv" => {
@@ -549,6 +557,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-g".to_string(), (config.fps * 2).to_string(),
+                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         "amf" => {
@@ -559,26 +568,26 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-g".to_string(), (config.fps * 2).to_string(),
+                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         _ => {
             // x264 fallback - WHIP optimized settings
+            let bufsize_kb = config.bitrate / config.fps;
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "ultrafast".to_string(),  // Fastest preset
-                "-tune".to_string(), "zerolatency".to_string(),  // Essential for WHIP
-                "-profile:v".to_string(), "baseline".to_string(), // No B-frames
-                "-bf".to_string(), "0".to_string(),              // Explicitly no B-frames
+                "-preset".to_string(), "ultrafast".to_string(),
+                "-tune".to_string(), "zerolatency".to_string(),
+                "-profile:v".to_string(), "baseline".to_string(),
+                "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
-                "-g".to_string(), (config.fps * 2).to_string(),   // 2 second GOP
-                "-threads".to_string(), "1".to_string(),          // Single thread for WHIP
+                "-bufsize".to_string(), format!("{}k", bufsize_kb),
+                "-g".to_string(), (config.fps * 2).to_string(),
+                "-threads".to_string(), "1".to_string(),
+                "-pix_fmt".to_string(), "yuv420p".to_string(),
             ]);
         }
     }
-
-    // Pixel format for WebRTC compatibility
-    args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
 
     // Audio encoder
     if config.audio_enabled {
