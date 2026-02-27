@@ -476,7 +476,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     #[cfg(target_os = "windows")]
     {
         if config.source_id.starts_with("title=") {
-            // Window capture: use gdigrab with title
+            // Window capture: use gdigrab with title (window capture not supported by ddagrab)
             args.extend([
                 "-rtbufsize".to_string(), "64M".to_string(),
                 "-thread_queue_size".to_string(), "512".to_string(),
@@ -487,26 +487,43 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-framerate".to_string(), config.fps.to_string(),
                 "-i".to_string(), config.source_id.clone(),
             ]);
-            // Scale filter for gdigrab
+            // Scale filter for gdigrab - convert to yuv420p for NVENC compatibility
+            if config.encoder == "nvenc" {
+                args.extend([
+                    "-vf".to_string(),
+                    format!("scale={}:{}:flags=fast_bilinear,format=yuv420p", config.width, config.height),
+                ]);
+            } else {
+                args.extend([
+                    "-vf".to_string(),
+                    format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+                ]);
+            }
+        } else if config.encoder == "nvenc" {
+            // Desktop + NVENC: use ddagrab (GPU-native capture via Desktop Duplication API)
+            // This keeps frames on the GPU for direct NVENC encoding
             args.extend([
-                "-vf".to_string(),
-                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+                "-init_hw_device".to_string(), "d3d11va=hw".to_string(),
+                "-filter_complex".to_string(),
+                format!(
+                    "ddagrab=output_idx=0:framerate={}:video_size={}x{}:draw_mouse=1,hwdownload,format=bgra,format=nv12",
+                    config.fps, config.width, config.height
+                ),
             ]);
         } else {
-            // Desktop capture: use ddagrab (Desktop Duplication API)
-            // output_idx=0 = primary monitor, better multi-monitor support
-            // hwdownload converts GPU frames, scale resizes to target resolution
-            let ddagrab_filter = format!(
-                "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra,scale={}:{}:flags=fast_bilinear",
-                config.fps, config.width, config.height
-            );
+            // Desktop + x264/other: use gdigrab (CPU-based capture)
             args.extend([
-                // D3D11 hardware device for ddagrab + NVENC pipeline
-                "-init_hw_device".to_string(), "d3d11va".to_string(),
+                "-rtbufsize".to_string(), "64M".to_string(),
+                "-thread_queue_size".to_string(), "512".to_string(),
                 "-probesize".to_string(), "32".to_string(),
                 "-analyzeduration".to_string(), "0".to_string(),
-                "-f".to_string(), "lavfi".to_string(),
-                "-i".to_string(), ddagrab_filter,
+                "-f".to_string(), "gdigrab".to_string(),
+                "-draw_mouse".to_string(), "1".to_string(),
+                "-framerate".to_string(), config.fps.to_string(),
+                "-video_size".to_string(), format!("{}x{}", config.width, config.height),
+                "-offset_x".to_string(), "0".to_string(),
+                "-offset_y".to_string(), "0".to_string(),
+                "-i".to_string(), "desktop".to_string(),
             ]);
         }
     }
@@ -529,24 +546,13 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     match config.encoder.as_str() {
 
         "nvenc" => {
-            // NVENC ultra-low latency for WHIP streaming
-            // bufsize = bitrate/fps for true zero-latency
-            let bufsize_kb = config.bitrate / config.fps;
+            // NVENC - minimal settings to avoid crashes
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), "p1".to_string(),           // Fastest
-                "-tune".to_string(), "ull".to_string(),            // Ultra-low latency
-                "-rc".to_string(), "cbr".to_string(),
+                "-preset".to_string(), "p1".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-maxrate".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", bufsize_kb),
-                "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-g".to_string(), (config.fps * 2).to_string(),
-                "-keyint_min".to_string(), config.fps.to_string(),
-                "-rc-lookahead".to_string(), "0".to_string(),
-                "-zerolatency".to_string(), "1".to_string(),
-                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         "qsv" => {
@@ -557,7 +563,6 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-g".to_string(), (config.fps * 2).to_string(),
-                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         "amf" => {
@@ -568,25 +573,27 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-g".to_string(), (config.fps * 2).to_string(),
-                "-pix_fmt".to_string(), "nv12".to_string(),
             ]);
         }
         _ => {
             // x264 fallback - WHIP optimized settings
-            let bufsize_kb = config.bitrate / config.fps;
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "ultrafast".to_string(),
-                "-tune".to_string(), "zerolatency".to_string(),
-                "-profile:v".to_string(), "baseline".to_string(),
-                "-bf".to_string(), "0".to_string(),
+                "-preset".to_string(), "ultrafast".to_string(),  // Fastest preset
+                "-tune".to_string(), "zerolatency".to_string(),  // Essential for WHIP
+                "-profile:v".to_string(), "baseline".to_string(), // No B-frames
+                "-bf".to_string(), "0".to_string(),              // Explicitly no B-frames
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", bufsize_kb),
-                "-g".to_string(), (config.fps * 2).to_string(),
-                "-threads".to_string(), "1".to_string(),
-                "-pix_fmt".to_string(), "yuv420p".to_string(),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
+                "-g".to_string(), (config.fps * 2).to_string(),   // 2 second GOP
+                "-threads".to_string(), "1".to_string(),          // Single thread for WHIP
             ]);
         }
+    }
+
+    // Pixel format - only set for non-NVENC (NVENC auto-selects)
+    if config.encoder != "nvenc" {
+        args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
     }
 
     // Audio encoder
@@ -604,7 +611,6 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     // WHIP output with flush
     args.extend([
         "-flush_packets".to_string(), "1".to_string(),
-        "-ts_buffer_size".to_string(), "2000000".to_string(),
         "-whip_flags".to_string(), "dtls_active".to_string(),
         "-f".to_string(), "whip".to_string(),
     ]);
