@@ -501,12 +501,12 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             }
         } else if config.encoder == "nvenc" {
             // Desktop + NVENC: use ddagrab (GPU-native capture via Desktop Duplication API)
-            // This keeps frames on the GPU for direct NVENC encoding
+            // Capture full desktop, then scale to target resolution (video_size crops, not scales)
             args.extend([
                 "-init_hw_device".to_string(), "d3d11va=hw".to_string(),
                 "-filter_complex".to_string(),
                 format!(
-                    "ddagrab=output_idx=0:framerate={}:video_size={}x{}:draw_mouse=1,hwdownload,format=bgra,format=nv12",
+                    "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra,scale={}:{}:flags=fast_bilinear,format=nv12",
                     config.fps, config.width, config.height
                 ),
             ]);
