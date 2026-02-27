@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::fs::OpenOptions;
+use std::io::Write;
 use tauri::api::process::{Command, CommandChild, CommandEvent};
 use tauri::{AppHandle, Manager};
 
@@ -77,6 +79,28 @@ impl Default for StreamingState {
             start_time: Mutex::new(None),
             shared: SharedState::default(),
         }
+    }
+}
+
+/// Log to debug file (Windows)
+fn log_to_file(message: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("C:\\Users\\VOLTA\\ffmpeg_debug.log")
+        {
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let _ = writeln!(file, "[{}] {}", timestamp, message);
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        log::info!("{}", message);
     }
 }
 
@@ -241,6 +265,11 @@ pub async fn start_stream(
     }
 
     let ffmpeg_args = build_ffmpeg_args(&config)?;
+    
+    // Log the full FFmpeg command for debugging
+    let cmd_str = format!("ffmpeg {}", ffmpeg_args.join(" "));
+    log::info!("[FFmpeg] Starting: {}", cmd_str);
+    log_to_file(&format!("Starting FFmpeg: {}", cmd_str));
 
     let (mut rx, child) = Command::new_sidecar("ffmpeg")
         .map_err(|e| format!("Failed to create FFmpeg sidecar: {}", e))?
@@ -275,15 +304,23 @@ pub async fn start_stream(
         while let Some(event) = rx.recv().await {
             match event {
                 CommandEvent::Stderr(line) => {
-                    log::debug!("[FFmpeg] {}", line);
+                    log::info!("[FFmpeg] {}", line);
+                    log_to_file(&line);
                     if line.contains("Error") || line.contains("error") {
                         if let Ok(mut error) = shared.last_error.lock() {
                             *error = Some(line);
                         }
                     }
                 }
+                CommandEvent::Stdout(line) => {
+                    log::debug!("[FFmpeg stdout] {}", line);
+                    log_to_file(&format!("[stdout] {}", line));
+                }
                 CommandEvent::Terminated(payload) => {
-                    log::info!("[FFmpeg] Exited with code: {:?}", payload.code);
+                    let msg = format!("FFmpeg exited with code: {:?}, signal: {:?}", 
+                        payload.code, payload.signal);
+                    log::error!("[FFmpeg] {}", msg);
+                    log_to_file(&msg);
                     if let Ok(mut running) = shared.is_running.lock() {
                         *running = false;
                     }
@@ -308,6 +345,7 @@ pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
     };
 
     if let Some(mut child) = child_opt {
+        log_to_file("Stopping FFmpeg (kill)");
         // Immediately kill FFmpeg - no graceful quit
         let _ = child.kill();
     }
@@ -419,35 +457,40 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
     })
 }
 
-/// Build FFmpeg command arguments - optimized for smooth frame capture
+/// Build FFmpeg command arguments - optimized for WHIP streaming
 fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     let mut args = Vec::new();
 
-    // Global options - minimal latency
+    // Global options - optimized for low latency WHIP
     args.extend([
         "-hide_banner".to_string(),
         "-loglevel".to_string(), "info".to_string(),
-        "-fflags".to_string(), "+genpts+discardcorrupt".to_string(),
+        // Critical: nobuffer + flush_packets for real-time streaming
+        "-fflags".to_string(), "+genpts+nobuffer+flush_packets".to_string(),
         "-flags".to_string(), "low_delay".to_string(),
+        "-max_delay".to_string(), "0".to_string(),
         "-y".to_string(),
         "-nostdin".to_string(),
-        "-threads".to_string(), "1".to_string(),
     ]);
 
-    // Input source (Windows gdigrab) with buffering for smooth capture
+    // Input source (Windows gdigrab)
     #[cfg(target_os = "windows")]
     {
         args.extend([
-            // Input buffering - critical for smooth capture
-            "-rtbufsize".to_string(), "256M".to_string(),
-            "-thread_queue_size".to_string(), "1024".to_string(),
+            // Reduced buffer for lower latency
+            "-rtbufsize".to_string(), "64M".to_string(),
+            "-thread_queue_size".to_string(), "512".to_string(),
             // Fast probing
             "-probesize".to_string(), "32".to_string(),
             "-analyzeduration".to_string(), "0".to_string(),
-            // GDI grab with draw mouse for timing reference
+            // GDI grab
             "-f".to_string(), "gdigrab".to_string(),
             "-draw_mouse".to_string(), "1".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
+            // CRITICAL: Limit capture region to reduce data
+            "-video_size".to_string(), format!("{}x{}", config.width, config.height),
+            "-offset_x".to_string(), "0".to_string(),
+            "-offset_y".to_string(), "0".to_string(),
         ]);
         
         // Handle window capture vs desktop
@@ -455,7 +498,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             // Window capture: use title directly
             args.extend(["-i".to_string(), config.source_id.clone()]);
         } else {
-            // Desktop capture (default)
+            // Desktop capture
             args.extend(["-i".to_string(), "desktop".to_string()]);
         }
     }
@@ -481,10 +524,11 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         }
     }
 
-    // Video filter with fast scaling
+    // Video filter - only resize if captured size differs from target
+    // Using fast_bilinear for speed
     args.extend([
         "-vf".to_string(),
-        format!("scale={}:{}:flags=fast_bilinear,fps={}", config.width, config.height, config.fps),
+        format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
     ]);
 
     // Video encoder with ultra-low latency settings
@@ -497,7 +541,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-rc".to_string(), "cbr".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-maxrate".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / 2),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-g".to_string(), (config.fps * 2).to_string(),
@@ -526,21 +570,22 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             ]);
         }
         _ => {
-            // x264 fallback
+            // x264 fallback - WHIP optimized settings
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "veryfast".to_string(),
-                "-tune".to_string(), "zerolatency".to_string(),
-                "-profile:v".to_string(), "baseline".to_string(),
-                "-bf".to_string(), "0".to_string(),
+                "-preset".to_string(), "ultrafast".to_string(),  // Fastest preset
+                "-tune".to_string(), "zerolatency".to_string(),  // Essential for WHIP
+                "-profile:v".to_string(), "baseline".to_string(), // No B-frames
+                "-bf".to_string(), "0".to_string(),              // Explicitly no B-frames
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
+                "-g".to_string(), (config.fps * 2).to_string(),   // 2 second GOP
+                "-threads".to_string(), "1".to_string(),          // Single thread for WHIP
             ]);
         }
     }
 
-    // Pixel format for maximum compatibility
+    // Pixel format for WebRTC compatibility
     args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
 
     // Audio encoder
@@ -555,10 +600,7 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         args.push("-an".to_string());
     }
 
-    // Constant frame rate output
-    args.extend(["-vsync".to_string(), "cfr".to_string()]);
-
-    // WHIP output with immediate flush
+    // WHIP output with flush
     args.extend([
         "-flush_packets".to_string(), "1".to_string(),
         "-whip_flags".to_string(), "dtls_active".to_string(),
