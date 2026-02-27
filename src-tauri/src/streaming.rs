@@ -610,9 +610,10 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         args.push("-an".to_string());
     }
 
-    // WHIP output with flush
+    // WHIP output with flush and buffer
     args.extend([
         "-flush_packets".to_string(), "1".to_string(),
+        "-ts_buffer_size".to_string(), "1048576".to_string(), // 1MB buffer
         "-whip_flags".to_string(), "dtls_active".to_string(),
         "-f".to_string(), "whip".to_string(),
     ]);
