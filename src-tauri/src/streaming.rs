@@ -500,15 +500,17 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 ]);
             }
         } else if config.encoder == "nvenc" {
-            // Desktop + NVENC: use ddagrab (GPU-native capture via Desktop Duplication API)
-            // Capture full desktop, then scale to target resolution (video_size crops, not scales)
+            // Desktop + NVENC: use ddagrab via lavfi input
+            // ddagrab captures D3D11 frames, hwdownload brings to CPU, scale resizes
             args.extend([
-                "-init_hw_device".to_string(), "d3d11va=hw".to_string(),
-                "-filter_complex".to_string(),
+                "-f".to_string(), "lavfi".to_string(),
+                "-i".to_string(),
                 format!(
-                    "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra,scale={}:{}:flags=fast_bilinear,format=nv12",
-                    config.fps, config.width, config.height
+                    "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra",
+                    config.fps
                 ),
+                "-vf".to_string(),
+                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
             ]);
         } else {
             // Desktop + x264/other: use gdigrab (CPU-based capture)
