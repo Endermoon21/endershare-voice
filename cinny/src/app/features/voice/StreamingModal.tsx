@@ -375,19 +375,21 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
   const handleStopStream = async () => {
     setStopping(true);
     try {
-      await stopNativeStream();
-      setIsStreaming(false);
-      setStreamStatus(null);
+      // Delete ingress first to kick participant immediately
       if (whipIngress) {
         await deleteWhipIngress(whipIngress.ingressId);
         setWhipIngress(null);
       }
+      await stopNativeStream();
+      setIsStreaming(false);
+      setStreamStatus(null);
     } catch (e: any) {
       setError(e.message || "Failed to stop stream");
     } finally {
       setStopping(false);
     }
   };
+
 
   const settings = getEffectiveSettings();
   const screens = sources.filter(s => s.source_type === "screen");
