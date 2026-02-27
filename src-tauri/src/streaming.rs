@@ -472,34 +472,39 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         "-y".to_string(),
         "-nostdin".to_string(),
     ]);
-
-    // Input source (Windows gdigrab)
+    // Input source (Windows)
     #[cfg(target_os = "windows")]
     {
-        args.extend([
-            // Reduced buffer for lower latency
-            "-rtbufsize".to_string(), "64M".to_string(),
-            "-thread_queue_size".to_string(), "512".to_string(),
-            // Fast probing
-            "-probesize".to_string(), "32".to_string(),
-            "-analyzeduration".to_string(), "0".to_string(),
-            // GDI grab
-            "-f".to_string(), "gdigrab".to_string(),
-            "-draw_mouse".to_string(), "1".to_string(),
-            "-framerate".to_string(), config.fps.to_string(),
-            // CRITICAL: Limit capture region to reduce data
-            "-video_size".to_string(), format!("{}x{}", config.width, config.height),
-            "-offset_x".to_string(), "0".to_string(),
-            "-offset_y".to_string(), "0".to_string(),
-        ]);
-        
-        // Handle window capture vs desktop
         if config.source_id.starts_with("title=") {
-            // Window capture: use title directly
-            args.extend(["-i".to_string(), config.source_id.clone()]);
+            // Window capture: use gdigrab with title
+            args.extend([
+                "-rtbufsize".to_string(), "64M".to_string(),
+                "-thread_queue_size".to_string(), "512".to_string(),
+                "-probesize".to_string(), "32".to_string(),
+                "-analyzeduration".to_string(), "0".to_string(),
+                "-f".to_string(), "gdigrab".to_string(),
+                "-draw_mouse".to_string(), "1".to_string(),
+                "-framerate".to_string(), config.fps.to_string(),
+                "-i".to_string(), config.source_id.clone(),
+            ]);
+            // Scale filter for gdigrab
+            args.extend([
+                "-vf".to_string(),
+                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+            ]);
         } else {
-            // Desktop capture
-            args.extend(["-i".to_string(), "desktop".to_string()]);
+            // Desktop capture: use ddagrab (Desktop Duplication API)
+            // output_idx=0 = primary monitor, better multi-monitor support
+            // hwdownload converts GPU frames, scale resizes to target resolution
+            let ddagrab_filter = format!(
+                "ddagrab=output_idx=0:framerate={}:draw_mouse=1,hwdownload,format=bgra,scale={}:{}:flags=fast_bilinear",
+                config.fps, config.width, config.height
+            );
+            args.extend([
+                "-probesize".to_string(), "32".to_string(),
+                "-analyzeduration".to_string(), "0".to_string(),
+                "-filter_complex".to_string(), ddagrab_filter,
+            ]);
         }
     }
 
@@ -508,31 +513,18 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
         args.extend([
             "-f".to_string(), "x11grab".to_string(),
             "-framerate".to_string(), config.fps.to_string(),
-            "-video_size".to_string(), format!("{}x{}", config.width, config.height),
             "-i".to_string(), ":0.0".to_string(),
+        ]);
+        // Scale filter for x11grab
+        args.extend([
+            "-vf".to_string(),
+            format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
         ]);
     }
 
-    // Audio input (optional)
-    if config.audio_enabled {
-        #[cfg(target_os = "windows")]
-        {
-            args.extend([
-                "-f".to_string(), "dshow".to_string(),
-                "-i".to_string(), "audio=virtual-audio-capturer".to_string(),
-            ]);
-        }
-    }
-
-    // Video filter - only resize if captured size differs from target
-    // Using fast_bilinear for speed
-    args.extend([
-        "-vf".to_string(),
-        format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
-    ]);
-
     // Video encoder with ultra-low latency settings
     match config.encoder.as_str() {
+
         "nvenc" => {
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
