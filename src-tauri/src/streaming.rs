@@ -490,18 +490,13 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-framerate".to_string(), config.fps.to_string(),
                 "-i".to_string(), config.source_id.clone(),
             ]);
-            // Scale filter for gdigrab - convert to yuv420p for NVENC compatibility
-            if config.encoder == "nvenc" {
-                args.extend([
-                    "-vf".to_string(),
-                    format!("scale={}:{}:flags=fast_bilinear,format=yuv420p", config.width, config.height),
-                ]);
-            } else {
-                args.extend([
-                    "-vf".to_string(),
-                    format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
-                ]);
-            }
+            // Scale filter with fps for consistent framerate
+            // fps filter converts variable gdigrab output to constant framerate
+            args.extend([
+                "-vf".to_string(),
+                format!("fps={},scale={}:{}:flags=fast_bilinear,format=yuv420p", config.fps, config.width, config.height),
+                "-vsync".to_string(), "cfr".to_string(),
+            ]);
         } else if config.encoder == "nvenc" {
             // Desktop + NVENC: use gdigrab with pixel format conversion
             // Note: ddagrab + NVENC crashes (ShareX issue #7326), use gdigrab instead
@@ -520,9 +515,11 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-i".to_string(), "desktop".to_string(),
             ]);
             // Scale and convert bgra to nv12 for NVENC compatibility
+            // fps filter converts variable gdigrab output to constant framerate
             args.extend([
                 "-vf".to_string(),
-                format!("scale={}:{}:flags=fast_bilinear,format=nv12", config.width, config.height),
+                format!("fps={},scale={}:{}:flags=fast_bilinear,format=nv12", config.fps, config.width, config.height),
+                "-vsync".to_string(), "cfr".to_string(),
             ]);
         } else {
             // Desktop + x264/other: use gdigrab (CPU-based capture)
@@ -541,9 +538,11 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-i".to_string(), "desktop".to_string(),
             ]);
             // Scale primary monitor to target resolution
+            // fps filter converts variable gdigrab output to constant framerate
             args.extend([
                 "-vf".to_string(),
-                format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+                format!("fps={},scale={}:{}:flags=fast_bilinear,format=yuv420p", config.fps, config.width, config.height),
+                "-vsync".to_string(), "cfr".to_string(),
             ]);
         }
     }
@@ -555,44 +554,57 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             "-framerate".to_string(), config.fps.to_string(),
             "-i".to_string(), ":0.0".to_string(),
         ]);
-        // Scale filter for x11grab
+        // Scale filter for x11grab with fps for consistent framerate
         args.extend([
             "-vf".to_string(),
-            format!("scale={}:{}:flags=fast_bilinear", config.width, config.height),
+            format!("fps={},scale={}:{}:flags=fast_bilinear,format=yuv420p", config.fps, config.width, config.height),
+            "-vsync".to_string(), "cfr".to_string(),
         ]);
     }
 
-    // Video encoder with ultra-low latency settings
+    // Video encoder with optimized settings for consistent streaming
     match config.encoder.as_str() {
 
         "nvenc" => {
-            // NVENC - minimal settings to avoid crashes
+            // NVENC - consistent streaming settings
             args.extend([
                 "-c:v".to_string(), "h264_nvenc".to_string(),
-                "-preset".to_string(), "p1".to_string(),
+                "-preset".to_string(), "p1".to_string(),         // Lowest latency
+                "-tune".to_string(), "ull".to_string(),          // Ultra low latency
+                "-profile:v".to_string(), "baseline".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
+                "-maxrate".to_string(), format!("{}k", config.bitrate), // CBR
+                "-bufsize".to_string(), format!("{}k", config.bitrate), // CBR
                 "-bf".to_string(), "0".to_string(),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-g".to_string(), config.fps.to_string(),        // 1 second keyframes
+                "-no-scenecut".to_string(), "1".to_string(),     // Disable scene detection
             ]);
         }
         "qsv" => {
+            // Intel QuickSync - consistent streaming settings
             args.extend([
                 "-c:v".to_string(), "h264_qsv".to_string(),
                 "-preset".to_string(), "veryfast".to_string(),
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-maxrate".to_string(), format!("{}k", config.bitrate), // CBR
+                "-bufsize".to_string(), format!("{}k", config.bitrate), // CBR
+                "-g".to_string(), config.fps.to_string(),        // 1 second keyframes
             ]);
         }
         "amf" => {
+            // AMD AMF - consistent streaming settings
             args.extend([
                 "-c:v".to_string(), "h264_amf".to_string(),
                 "-usage".to_string(), "ultralowlatency".to_string(),
+                "-rc".to_string(), "cbr".to_string(),            // CBR mode
                 "-profile:v".to_string(), "baseline".to_string(),
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),
+                "-maxrate".to_string(), format!("{}k", config.bitrate),
+                "-bufsize".to_string(), format!("{}k", config.bitrate),
+                "-g".to_string(), config.fps.to_string(),        // 1 second keyframes
             ]);
         }
         "mf" => {
@@ -600,27 +612,34 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
             // Uses Intel/AMD/NVIDIA via Windows Media Foundation
             args.extend([
                 "-c:v".to_string(), "h264_mf".to_string(),
-                "-rate_control".to_string(), "4".to_string(),    // Low delay VBR
+                "-rate_control".to_string(), "2".to_string(),    // CBR mode
                 "-scenario".to_string(), "4".to_string(),        // Live streaming
                 "-hw_encoding".to_string(), "1".to_string(),     // Force hardware
                 "-profile:v".to_string(), "baseline".to_string(), // WebRTC compatible
                 "-bf".to_string(), "0".to_string(),              // No B-frames
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-g".to_string(), (config.fps * 2).to_string(),  // 2 second GOP
+                "-maxrate".to_string(), format!("{}k", config.bitrate), // CBR
+                "-bufsize".to_string(), format!("{}k", config.bitrate), // CBR
+                "-g".to_string(), config.fps.to_string(),        // 1 second keyframes
             ]);
         }
         _ => {
-            // x264 fallback - WHIP optimized settings
+            // x264 fallback - optimized for consistent streaming
+            // Key: bufsize=maxrate=bitrate for true CBR, 1-second keyframes, no scene detection
             args.extend([
                 "-c:v".to_string(), "libx264".to_string(),
-                "-preset".to_string(), "ultrafast".to_string(),  // Fastest preset
+                "-preset".to_string(), "veryfast".to_string(),   // Good quality/speed balance
                 "-tune".to_string(), "zerolatency".to_string(),  // Essential for WHIP
-                "-profile:v".to_string(), "baseline".to_string(), // No B-frames
+                "-profile:v".to_string(), "baseline".to_string(), // No B-frames, max compat
+                "-level".to_string(), "4.1".to_string(),         // Wide compatibility
                 "-bf".to_string(), "0".to_string(),              // Explicitly no B-frames
                 "-b:v".to_string(), format!("{}k", config.bitrate),
-                "-bufsize".to_string(), format!("{}k", config.bitrate / 4),
-                "-g".to_string(), (config.fps * 2).to_string(),   // 2 second GOP
-                "-threads".to_string(), "1".to_string(),          // Single thread for WHIP
+                "-maxrate".to_string(), format!("{}k", config.bitrate), // CBR: maxrate = bitrate
+                "-bufsize".to_string(), format!("{}k", config.bitrate), // CBR: bufsize = bitrate
+                "-g".to_string(), config.fps.to_string(),        // 1 second keyframe interval
+                "-keyint_min".to_string(), config.fps.to_string(), // Min keyframe = max
+                "-sc_threshold".to_string(), "0".to_string(),    // Disable scene detection
+                "-x264-params".to_string(), "force-cfr=1:no-scenecut=1".to_string(),
             ]);
         }
     }
