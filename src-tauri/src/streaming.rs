@@ -436,6 +436,9 @@ pub async fn check_ffmpeg() -> Result<FFmpegInfo, String> {
     if encoders_str.contains("h264_amf") {
         encoders.push("amf".to_string());
     }
+    if encoders_str.contains("h264_mf") {
+        encoders.push("mf".to_string());
+    }
     if encoders_str.contains("libx264") {
         encoders.push("x264".to_string());
     }
@@ -590,6 +593,20 @@ fn build_ffmpeg_args(config: &StreamConfig) -> Result<Vec<String>, String> {
                 "-bf".to_string(), "0".to_string(),
                 "-b:v".to_string(), format!("{}k", config.bitrate),
                 "-g".to_string(), (config.fps * 2).to_string(),
+            ]);
+        }
+        "mf" => {
+            // MediaFoundation hardware encoder - Windows built-in
+            // Uses Intel/AMD/NVIDIA via Windows Media Foundation
+            args.extend([
+                "-c:v".to_string(), "h264_mf".to_string(),
+                "-rate_control".to_string(), "4".to_string(),    // Low delay VBR
+                "-scenario".to_string(), "4".to_string(),        // Live streaming
+                "-hw_encoding".to_string(), "1".to_string(),     // Force hardware
+                "-profile:v".to_string(), "baseline".to_string(), // WebRTC compatible
+                "-bf".to_string(), "0".to_string(),              // No B-frames
+                "-b:v".to_string(), format!("{}k", config.bitrate),
+                "-g".to_string(), (config.fps * 2).to_string(),  // 2 second GOP
             ]);
         }
         _ => {
