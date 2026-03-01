@@ -1,11 +1,11 @@
 [package]
-name = "cinny"
-version = "4.10.97"
-description = "Yet another matrix client"
-authors = ["Ajay Bura"]
+name = "cinny-min"
+version = "4.10.98"
+description = "Matrix client with voice channels and game streaming"
+authors = ["endershare.org"]
 license = "AGPL-3.0-only"
-repository = "https://github.com/cinnyapp/cinny-desktop"
-default-run = "cinny"
+repository = "https://github.com/Endermoon21/endershare-voice"
+default-run = "cinny-min"
 edition = "2021"
 rust-version = "1.61"
 
@@ -19,13 +19,15 @@ log = "0.4"
 env_logger = "0.11"
 tokio = { version = "1", features = ["time"] }
 
-# Tauri with sidecar support
+# Tauri (removed process-command-api since we don't use sidecars anymore)
 tauri = { version = "1.8.0", features = [
     "api-all",
     "devtools",
-    "updater",
-    "process-command-api"
+    "updater"
 ] }
+
+# GStreamer Rust bindings for native WHIP streaming
+gstreamer = "0.23"
 
 tauri-plugin-localhost = "0.1.0"
 tauri-plugin-window-state = "0.1.1"

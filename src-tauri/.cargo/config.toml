@@ -1,0 +1,13 @@
+# Cargo configuration for GStreamer builds
+# See: https://gstreamer.pages.freedesktop.org/gstreamer-rs/stable/latest/docs/gstreamer/
+
+# Windows MSVC target configuration
+# Requires GStreamer MSVC development packages:
+# - gstreamer-1.0-msvc-x86_64-*.msi (runtime)
+# - gstreamer-1.0-devel-msvc-x86_64-*.msi (development)
+#
+# Download from: https://gstreamer.freedesktop.org/download/#windows
+# Default install path: C:\gstreamer\1.0\msvc_x86_64
+
+[target.x86_64-pc-windows-msvc.env]
+PKG_CONFIG_PATH = "C:\\gstreamer\\1.0\\msvc_x86_64\\lib\\pkgconfig"

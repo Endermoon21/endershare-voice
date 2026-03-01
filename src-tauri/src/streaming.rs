@@ -2,16 +2,18 @@
 //!
 //! This module provides:
 //! - Screen/window enumeration via Windows API
-//! - GStreamer sidecar with whipclientsink for WHIP streaming
+//! - GStreamer pipeline with whipclientsink for WHIP streaming
 //! - Stream status monitoring
+//!
+//! Uses gstreamer-rs crate directly instead of spawning gst-launch-1.0 process.
 
+use gstreamer as gst;
+use gst::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::fs::OpenOptions;
 use std::io::Write;
-use tauri::api::process::{Command, CommandChild, CommandEvent};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 /// Capture source (screen or window)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +67,7 @@ pub struct SharedState {
 
 /// State for managing streams
 pub struct StreamingState {
-    stream_child: Mutex<Option<CommandChild>>,
+    pipeline: Mutex<Option<gst::Pipeline>>,
     current_config: Mutex<Option<StreamConfig>>,
     start_time: Mutex<Option<std::time::Instant>>,
     shared: SharedState,
@@ -74,7 +76,7 @@ pub struct StreamingState {
 impl Default for StreamingState {
     fn default() -> Self {
         Self {
-            stream_child: Mutex::new(None),
+            pipeline: Mutex::new(None),
             current_config: Mutex::new(None),
             start_time: Mutex::new(None),
             shared: SharedState::default(),
@@ -82,7 +84,7 @@ impl Default for StreamingState {
     }
 }
 
-/// Log to debug file (Windows)
+/// Log to debug file (Windows) or system log (other platforms)
 fn log_to_file(message: &str) {
     #[cfg(target_os = "windows")]
     {
@@ -226,50 +228,76 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     Ok(sources)
 }
 
-/// Get GStreamer environment variables
-fn get_gstreamer_env(app: &AppHandle) -> HashMap<String, String> {
-    let mut env = HashMap::new();
+/// Build GStreamer pipeline string for WHIP streaming
+fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
+    let mut pipeline = String::new();
 
-    // Try multiple locations for GStreamer
-    let mut possible_paths: Vec<std::path::PathBuf> = Vec::new();
-    
-    // Bundled with app
-    if let Some(p) = app.path_resolver().resource_dir() {
-        possible_paths.push(p.join("gstreamer"));
-    }
-    
-    // AppData location (hardcoded for Windows)
+    // Screen capture with D3D11 (Windows)
     #[cfg(target_os = "windows")]
     {
-        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-            possible_paths.push(std::path::PathBuf::from(local_app_data).join("Cinny-Min").join("gstreamer"));
-        }
-    }
-    
-    // System GStreamer
-    possible_paths.push(std::path::PathBuf::from("C:\\gstreamer\\1.0\\msvc_x86_64"));
+        pipeline.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
 
-    for gst_root in possible_paths {
-        let gst_bin = gst_root.join("bin");
-        let gst_plugins = gst_root.join("lib").join("gstreamer-1.0");
+        // Framerate caps
+        pipeline.push_str(&format!(
+            " ! video/x-raw(memory:D3D11Memory),framerate={}/1",
+            config.fps
+        ));
 
-        if gst_bin.exists() || gst_plugins.exists() {
-            if gst_plugins.exists() {
-                env.insert("GST_PLUGIN_PATH".to_string(), gst_plugins.to_string_lossy().to_string());
-            }
-            env.insert("GST_PLUGIN_SYSTEM_PATH".to_string(), String::new());
-
-            let current_path = std::env::var("PATH").unwrap_or_default();
-            let new_path = format!("{};{}", gst_bin.to_string_lossy(), current_path);
-            env.insert("PATH".to_string(), new_path);
-            env.insert("GST_REGISTRY_UPDATE".to_string(), "no".to_string());
-
-            log_to_file(&format!("GStreamer found at: {}", gst_root.display()));
-            break;
-        }
+        // Convert BGRA to NV12 in GPU memory
+        pipeline.push_str(" ! d3d11convert");
+        pipeline.push_str(&format!(
+            " ! video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}",
+            config.width, config.height
+        ));
     }
 
-    env
+    // Linux capture (X11)
+    #[cfg(target_os = "linux")]
+    {
+        pipeline.push_str("ximagesrc");
+        pipeline.push_str(" ! videoconvert");
+        pipeline.push_str(&format!(
+            " ! videoscale ! video/x-raw,width={},height={},framerate={}/1",
+            config.width, config.height, config.fps
+        ));
+    }
+
+    // macOS capture
+    #[cfg(target_os = "macos")]
+    {
+        pipeline.push_str("avfvideosrc");
+        pipeline.push_str(" ! videoconvert");
+        pipeline.push_str(&format!(
+            " ! videoscale ! video/x-raw,width={},height={},framerate={}/1",
+            config.width, config.height, config.fps
+        ));
+    }
+
+    // Queue for stability
+    pipeline.push_str(" ! queue max-size-buffers=1");
+
+    // WHIP sink with bitrate control
+    let bitrate_bps = (config.bitrate * 1000) as u64;
+    let min_bitrate = std::cmp::max(bitrate_bps / 4, 500_000);
+    let start_bitrate = bitrate_bps * 80 / 100;
+    let max_bitrate = bitrate_bps * 150 / 100;
+
+    // whipclientsink handles encoding internally when receiving raw video
+    // It will auto-select the best encoder (mfh264enc, nvh264enc, x264enc, etc.)
+    pipeline.push_str(&format!(
+        " ! whipclientsink name=whip min-bitrate={} max-bitrate={} start-bitrate={} video-caps=video/x-h264 signaller::whip-endpoint={}",
+        min_bitrate, max_bitrate, start_bitrate, config.whip_url
+    ));
+
+    if let Some(ref token) = config.bearer_token {
+        pipeline.push_str(&format!(" signaller::auth-token={}", token));
+    }
+
+    if let Some(ref turn) = config.turn_server {
+        pipeline.push_str(&format!(" turn-servers=<\"{}\">", turn));
+    }
+
+    pipeline
 }
 
 /// Start streaming to WHIP endpoint using GStreamer
@@ -280,30 +308,49 @@ pub async fn start_stream(
 ) -> Result<(), String> {
     let state = app.state::<StreamingState>();
 
+    // Check if already streaming
     {
-        let child = state.stream_child.lock().map_err(|e| e.to_string())?;
-        if child.is_some() {
+        let pipeline = state.pipeline.lock().map_err(|e| e.to_string())?;
+        if pipeline.is_some() {
             return Err("Already streaming".to_string());
         }
     }
 
-    let args = build_gstreamer_args(&config)?;
-    let env_vars = get_gstreamer_env(&app);
+    // Build pipeline string
+    let pipeline_str = build_gstreamer_pipeline(&config);
+    log_to_file(&format!("GStreamer pipeline: {}", pipeline_str));
 
-    let cmd_str = format!("gst-launch-1.0 {}", args.join(" "));
-    log::info!("Starting GStreamer: {}", cmd_str);
-    log_to_file(&format!("Starting GStreamer: {}", cmd_str));
+    // Parse and create pipeline
+    let pipeline = gst::parse::launch(&pipeline_str)
+        .map_err(|e| {
+            let msg = format!("Failed to parse pipeline: {}", e);
+            log_to_file(&msg);
+            msg
+        })?
+        .downcast::<gst::Pipeline>()
+        .map_err(|_| {
+            let msg = "Pipeline is not a GstPipeline";
+            log_to_file(msg);
+            msg.to_string()
+        })?;
 
-    let (mut rx, child) = Command::new_sidecar("gst-launch-1.0")
-        .map_err(|e| format!("Failed to create GStreamer sidecar: {}. Make sure GStreamer is installed.", e))?
-        .envs(env_vars)
-        .args(&args)
-        .spawn()
-        .map_err(|e| format!("Failed to spawn GStreamer: {}", e))?;
+    // Set to playing state
+    pipeline.set_state(gst::State::Playing)
+        .map_err(|e| {
+            let msg = format!("Failed to start pipeline: {:?}", e);
+            log_to_file(&msg);
+            msg
+        })?;
 
+    log_to_file("GStreamer pipeline started successfully");
+
+    // Get bus for message handling
+    let bus = pipeline.bus().ok_or("Failed to get pipeline bus")?;
+
+    // Store pipeline and config
     {
-        let mut child_lock = state.stream_child.lock().map_err(|e| e.to_string())?;
-        *child_lock = Some(child);
+        let mut pipeline_lock = state.pipeline.lock().map_err(|e| e.to_string())?;
+        *pipeline_lock = Some(pipeline);
     }
     {
         let mut config_lock = state.current_config.lock().map_err(|e| e.to_string())?;
@@ -322,36 +369,54 @@ pub async fn start_stream(
         *running = true;
     }
 
+    // Spawn message handler thread
     let shared = state.shared.clone();
-
-    tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            match event {
-                CommandEvent::Stderr(line) => {
-                    log::info!("[gst-launch-1.0] {}", line);
-                    log_to_file(&line);
-                    if line.contains("Error") || line.contains("error") || line.contains("ERROR") {
-                        if let Ok(mut error) = shared.last_error.lock() {
-                            *error = Some(line);
-                        }
-                    }
+    std::thread::spawn(move || {
+        for msg in bus.iter_timed(gst::ClockTime::NONE) {
+            match msg.view() {
+                gst::MessageView::Eos(..) => {
+                    log_to_file("Pipeline reached EOS");
+                    break;
                 }
-                CommandEvent::Stdout(line) => {
-                    log::debug!("[gst-launch-1.0 stdout] {}", line);
-                    log_to_file(&format!("[stdout] {}", line));
-                }
-                CommandEvent::Terminated(payload) => {
-                    let msg = format!("GStreamer exited: code={:?}, signal={:?}", payload.code, payload.signal);
-                    log::info!("{}", msg);
-                    log_to_file(&msg);
-                    if let Ok(mut running) = shared.is_running.lock() {
-                        *running = false;
+                gst::MessageView::Error(err) => {
+                    let error_msg = format!(
+                        "GStreamer error from {:?}: {} ({:?})",
+                        err.src().map(|s| s.path_string()),
+                        err.error(),
+                        err.debug()
+                    );
+                    log_to_file(&error_msg);
+                    if let Ok(mut error) = shared.last_error.lock() {
+                        *error = Some(error_msg);
                     }
                     break;
+                }
+                gst::MessageView::StateChanged(state_changed) => {
+                    // Only log state changes for the pipeline itself
+                    if state_changed.src().map(|s| s.type_().name()) == Some("GstPipeline") {
+                        log_to_file(&format!(
+                            "Pipeline state: {:?} -> {:?}",
+                            state_changed.old(),
+                            state_changed.current()
+                        ));
+                    }
+                }
+                gst::MessageView::Warning(warning) => {
+                    log_to_file(&format!(
+                        "GStreamer warning: {} ({:?})",
+                        warning.error(),
+                        warning.debug()
+                    ));
                 }
                 _ => {}
             }
         }
+
+        // Mark as not running when message loop exits
+        if let Ok(mut running) = shared.is_running.lock() {
+            *running = false;
+        }
+        log_to_file("GStreamer message loop exited");
     });
 
     Ok(())
@@ -362,16 +427,27 @@ pub async fn start_stream(
 pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
     let state = app.state::<StreamingState>();
 
-    let child_opt = {
-        let mut child_lock = state.stream_child.lock().map_err(|e| e.to_string())?;
-        child_lock.take()
+    let pipeline_opt = {
+        let mut pipeline_lock = state.pipeline.lock().map_err(|e| e.to_string())?;
+        pipeline_lock.take()
     };
 
-    if let Some(child) = child_opt {
-        log_to_file("Stopping GStreamer stream");
-        let _ = child.kill();
+    if let Some(pipeline) = pipeline_opt {
+        log_to_file("Stopping GStreamer pipeline");
+
+        // Send EOS to gracefully stop
+        pipeline.send_event(gst::event::Eos::new());
+
+        // Wait briefly for EOS to propagate, then force stop
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        pipeline.set_state(gst::State::Null)
+            .map_err(|e| format!("Failed to stop pipeline: {:?}", e))?;
+
+        log_to_file("GStreamer pipeline stopped");
     }
 
+    // Clear state
     {
         let mut config = state.current_config.lock().map_err(|e| e.to_string())?;
         *config = None;
@@ -393,12 +469,12 @@ pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
 pub async fn get_stream_status(app: AppHandle) -> Result<StreamStatus, String> {
     let state = app.state::<StreamingState>();
 
-    let child = state.stream_child.lock().map_err(|e| e.to_string())?;
+    let pipeline = state.pipeline.lock().map_err(|e| e.to_string())?;
     let config = state.current_config.lock().map_err(|e| e.to_string())?;
     let start_time = state.start_time.lock().map_err(|e| e.to_string())?;
     let last_error = state.shared.last_error.lock().map_err(|e| e.to_string())?;
 
-    let active = child.is_some();
+    let active = pipeline.is_some();
     let duration_seconds = start_time.as_ref().map(|t| t.elapsed().as_secs()).unwrap_or(0);
 
     Ok(StreamStatus {
@@ -410,102 +486,46 @@ pub async fn get_stream_status(app: AppHandle) -> Result<StreamStatus, String> {
     })
 }
 
-/// Check GStreamer availability
+/// Check GStreamer availability and required plugins
 #[tauri::command]
-pub async fn check_gstreamer(app: AppHandle) -> Result<GStreamerInfo, String> {
-    let env_vars = get_gstreamer_env(&app);
-
-    let version_result = Command::new_sidecar("gst-launch-1.0")
-        .map_err(|e| e.to_string())?
-        .envs(env_vars)
-        .args(["--version"])
-        .output();
-
-    match version_result {
-        Ok(output) => {
-            let version = output.stdout.lines().next().map(|s| s.to_string());
-            log_to_file(&format!("GStreamer available: {:?}", version));
-            Ok(GStreamerInfo {
-                available: true,
-                version,
-                has_whip: true,
-                has_d3d11: true,
-            })
-        }
-        Err(e) => {
-            log_to_file(&format!("GStreamer not available: {}", e));
-            Ok(GStreamerInfo {
-                available: false,
-                version: None,
-                has_whip: false,
-                has_d3d11: false,
-            })
-        }
+pub async fn check_gstreamer(_app: AppHandle) -> Result<GStreamerInfo, String> {
+    // Check if GStreamer is initialized
+    if !gst::is_initialized() {
+        log_to_file("GStreamer not initialized");
+        return Ok(GStreamerInfo {
+            available: false,
+            version: None,
+            has_whip: false,
+            has_d3d11: false,
+        });
     }
-}
 
-/// Build GStreamer pipeline arguments for WHIP streaming
-fn build_gstreamer_args(config: &StreamConfig) -> Result<Vec<String>, String> {
-    let mut pipeline = String::new();
+    // Get version
+    let version = gst::version_string();
+    log_to_file(&format!("GStreamer version: {}", version));
 
-    // Screen capture with D3D11 (Windows)
+    // Check for required plugins
+    let registry = gst::Registry::get();
+
+    let has_whip = registry.find_plugin("rswebrtc").is_some()
+        || registry.lookup_feature("whipclientsink").is_some();
+
     #[cfg(target_os = "windows")]
-    {
-        pipeline.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
+    let has_d3d11 = registry.find_plugin("d3d11").is_some()
+        || registry.lookup_feature("d3d11screencapturesrc").is_some();
 
-        // Framerate caps
-        pipeline.push_str(&format!(
-            " ! \"video/x-raw(memory:D3D11Memory),framerate={}/1\"",
-            config.fps
-        ));
-
-        // Convert BGRA to NV12 in GPU memory
-        pipeline.push_str(" ! d3d11convert");
-        pipeline.push_str(&format!(
-            " ! \"video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}\"",
-            config.width, config.height
-        ));
-    }
-
-    // Linux capture
     #[cfg(not(target_os = "windows"))]
-    {
-        pipeline.push_str("ximagesrc");
-        pipeline.push_str(" ! videoconvert");
-        pipeline.push_str(&format!(
-            " ! videoscale ! video/x-raw,width={},height={},framerate={}/1",
-            config.width, config.height, config.fps
-        ));
-    }
+    let has_d3d11 = false;
 
-    // Queue for stability
-    pipeline.push_str(" ! queue max-size-buffers=1");
-
-    // WHIP sink with bitrate control
-    let bitrate_bps = (config.bitrate * 1000) as u64;
-    let min_bitrate = std::cmp::max(bitrate_bps / 4, 500_000);
-    let start_bitrate = bitrate_bps * 80 / 100;
-    let max_bitrate = bitrate_bps * 150 / 100;
-
-    // whipclientsink handles encoding internally when receiving raw video
-    // It will auto-select the best encoder (mfh264enc, nvh264enc, x264enc, etc.)
-    pipeline.push_str(&format!(
-        " ! whipclientsink name=whip \
-         min-bitrate={} max-bitrate={} start-bitrate={} \
-         video-caps=\"video/x-h264\" \
-         signaller::whip-endpoint=\"{}\"",
-        min_bitrate, max_bitrate, start_bitrate, config.whip_url
+    log_to_file(&format!(
+        "GStreamer plugins - whipclientsink: {}, d3d11: {}",
+        has_whip, has_d3d11
     ));
 
-    if let Some(ref token) = config.bearer_token {
-        pipeline.push_str(&format!(" signaller::auth-token=\"{}\"", token));
-    }
-
-    if let Some(ref turn) = config.turn_server {
-        pipeline.push_str(&format!(" turn-servers=<\"{}\">", turn));
-    }
-
-    log_to_file(&format!("GStreamer pipeline: {}", pipeline));
-
-    Ok(vec!["-e".to_string(), pipeline])
+    Ok(GStreamerInfo {
+        available: true,
+        version: Some(version.to_string()),
+        has_whip,
+        has_d3d11,
+    })
 }
