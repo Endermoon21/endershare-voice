@@ -487,11 +487,12 @@ fn build_gstreamer_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     let start_bitrate = bitrate_bps * 80 / 100;
     let max_bitrate = bitrate_bps * 150 / 100;
 
+    // whipclientsink handles encoding internally when receiving raw video
+    // It will auto-select the best encoder (mfh264enc, nvh264enc, x264enc, etc.)
     pipeline.push_str(&format!(
         " ! whipclientsink name=whip \
          min-bitrate={} max-bitrate={} start-bitrate={} \
-         congestion-control=google-congestion-control \
-         video-caps=video/x-h264 \
+         video-caps=\"video/x-h264\" \
          signaller::whip-endpoint=\"{}\"",
         min_bitrate, max_bitrate, start_bitrate, config.whip_url
     ));
