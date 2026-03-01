@@ -195,13 +195,11 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
 
   // Get actual encoder
   const getActualEncoder = useCallback((): "nvenc" | "qsv" | "amf" | "x264" => {
+    // GStreamer auto-selects the best encoder via whipclientsink
+    // We just return a placeholder value since GStreamer handles this
     if (encoder !== "auto") return encoder;
-    if (!gstreamerInfo) return "x264";
-    if (gstreamerInfo.encoders.includes("nvenc")) return "nvenc";
-    if (gstreamerInfo.encoders.includes("qsv")) return "qsv";
-    if (gstreamerInfo.encoders.includes("amf")) return "amf";
-    return "x264";
-  }, [encoder, gstreamerInfo]);
+    return "x264"; // GStreamer will use mfh264enc or nvh264enc automatically
+  }, [encoder]);
 
   // Initialize - also check if already streaming
   useEffect(() => {
@@ -678,17 +676,11 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
                           className={css.StreamSelect}
                         >
                           <option value="auto">
-                            Auto ({gstreamerInfo?.encoders[0]?.toUpperCase() || "x264"})
+                            Auto (Hardware)
                           </option>
-                          {gstreamerInfo?.encoders.includes("nvenc") && (
-                            <option value="nvenc">NVENC (NVIDIA)</option>
-                          )}
-                          {gstreamerInfo?.encoders.includes("qsv") && (
-                            <option value="qsv">QSV (Intel)</option>
-                          )}
-                          {gstreamerInfo?.encoders.includes("amf") && (
-                            <option value="amf">AMF (AMD)</option>
-                          )}
+                          <option value="nvenc">NVENC (NVIDIA)</option>
+                          <option value="qsv">QSV (Intel)</option>
+                          <option value="amf">AMF (AMD)</option>
                           <option value="x264">x264 (CPU)</option>
                         </select>
                       </div>
@@ -704,7 +696,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
 
                       {gstreamerInfo && (
                         <div className={css.StreamEncoderInfo}>
-                          FFmpeg {gstreamerInfo.version} • {gstreamerInfo.encoders.map(e => e.toUpperCase()).join(", ") || "x264 only"}
+                          GStreamer {gstreamerInfo.version} - Hardware encoding enabled
                         </div>
                       )}
                     </div>
