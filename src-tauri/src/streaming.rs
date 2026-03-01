@@ -254,10 +254,10 @@ fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // Linux capture (X11)
     #[cfg(target_os = "linux")]
     {
-        pipeline.push_str("ximagesrc");
+        pipeline.push_str("ximagesrc show-pointer=true use-damage=false");
         pipeline.push_str(" ! videoconvert");
         pipeline.push_str(&format!(
-            " ! videoscale ! video/x-raw,width={},height={},framerate={}/1",
+            " ! videoscale ! video/x-raw,format=NV12,width={},height={},framerate={}/1",
             config.width, config.height, config.fps
         ));
     }
@@ -265,32 +265,50 @@ fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // macOS capture
     #[cfg(target_os = "macos")]
     {
-        pipeline.push_str("avfvideosrc");
+        pipeline.push_str("avfvideosrc capture-screen=true");
         pipeline.push_str(" ! videoconvert");
         pipeline.push_str(&format!(
-            " ! videoscale ! video/x-raw,width={},height={},framerate={}/1",
+            " ! videoscale ! video/x-raw,format=NV12,width={},height={},framerate={}/1",
             config.width, config.height, config.fps
         ));
     }
 
-    // Queue for stability
-    pipeline.push_str(" ! queue max-size-buffers=1");
+    // Queue for stability - small buffer for low latency
+    pipeline.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
     // Download from GPU memory to system memory for whipclientsink
     #[cfg(target_os = "windows")]
     pipeline.push_str(" ! d3d11download ! videoconvert");
 
-    // WHIP sink - handles encoding internally with video-caps
-    // whipclientsink will auto-select encoder (nvh264enc, mfh264enc, x264enc, etc.)
+    // WHIP sink with optimized settings for game streaming
+    // - congestion-control=gcc: Google Congestion Control for adaptive bitrate
+    // - do-fec=true: Forward Error Correction for packet loss recovery
+    // - do-retransmission=true: NACK-based retransmission for reliability
+    // - Encoder auto-selected by rank: nvh264enc > mfh264enc > x264enc
     let bitrate_bps = (config.bitrate * 1000) as u64;
+    let start_bitrate = bitrate_bps * 3 / 4; // Start at 75% of max for faster ramp
+
     let mut whip_props = format!(
-        " ! whipclientsink name=whip video-caps=\"video/x-h264\" max-bitrate={} signaller::whip-endpoint=\"{}\"",
+        " ! whipclientsink name=whip \
+video-caps=\"video/x-h264,profile=constrained-baseline\" \
+start-bitrate={} \
+min-bitrate=500000 \
+max-bitrate={} \
+do-fec=true \
+do-retransmission=true \
+signaller::whip-endpoint=\"{}\"",
+        start_bitrate,
         bitrate_bps,
         config.whip_url
     );
 
     if let Some(ref token) = config.bearer_token {
         whip_props.push_str(&format!(" signaller::auth-token=\"{}\"", token));
+    }
+
+    // Add TURN server if provided (for users without direct connectivity)
+    if let Some(ref turn) = config.turn_server {
+        whip_props.push_str(&format!(" turn-servers=\"<{}>\"", turn));
     }
 
     pipeline.push_str(&whip_props);
