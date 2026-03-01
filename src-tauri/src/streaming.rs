@@ -478,15 +478,21 @@ pub async fn get_stream_status(app: AppHandle) -> Result<StreamStatus, String> {
 
     let active = pipeline_guard.is_some();
 
-    let start_time_opt: &Option<std::time::Instant> = &*start_time_guard;
-    let duration_seconds: u64 = if let Some(t) = start_time_opt {
-        t.elapsed().as_secs()
+    // Calculate duration without complex type inference
+    let duration_seconds: u64 = get_elapsed_seconds(&start_time_guard);
+
+    let source_id: Option<String> = if let Some(ref c) = *config_guard {
+        Some(c.source_id.clone())
     } else {
-        0
+        None
     };
 
-    let source_id: Option<String> = config_guard.as_ref().map(|c| c.source_id.clone());
-    let whip_url: Option<String> = config_guard.as_ref().map(|c| c.whip_url.clone());
+    let whip_url: Option<String> = if let Some(ref c) = *config_guard {
+        Some(c.whip_url.clone())
+    } else {
+        None
+    };
+
     let error: Option<String> = last_error_guard.clone();
 
     Ok(StreamStatus {
@@ -496,6 +502,14 @@ pub async fn get_stream_status(app: AppHandle) -> Result<StreamStatus, String> {
         duration_seconds,
         error,
     })
+}
+
+/// Helper to get elapsed seconds from optional start time
+fn get_elapsed_seconds(start_time: &Option<std::time::Instant>) -> u64 {
+    match start_time {
+        Some(t) => t.elapsed().as_secs(),
+        None => 0,
+    }
 }
 
 /// Check GStreamer availability and required plugins
