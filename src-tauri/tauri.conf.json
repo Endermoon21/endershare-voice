@@ -23,9 +23,7 @@
         "icons/icon.ico"
       ],
       "resources": {
-        "resources/WebView2Loader.dll": "",
-        "gstreamer/bin/*.dll": "gstreamer/bin/",
-        "gstreamer/lib/gstreamer-1.0/*.dll": "gstreamer/lib/gstreamer-1.0/"
+        "resources/WebView2Loader.dll": ""
       },
       "externalBin": [],
       "copyright": "© 2026 endershare.org",
