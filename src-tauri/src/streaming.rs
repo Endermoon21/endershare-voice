@@ -308,8 +308,8 @@ fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
         ));
     }
 
-    // H264 parser and RTP payload
-    pipeline.push_str(" ! h264parse ! rtph264pay config-interval=-1 pt=96");
+    // H264 parser (whipclientsink handles RTP internally)
+    pipeline.push_str(" ! h264parse");
 
     // WHIP sink with auth
     let mut whip_props = format!(
