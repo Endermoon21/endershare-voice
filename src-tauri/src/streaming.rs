@@ -231,14 +231,23 @@ fn get_gstreamer_env(app: &AppHandle) -> HashMap<String, String> {
     let mut env = HashMap::new();
 
     // Try multiple locations for GStreamer
-    let possible_paths: Vec<std::path::PathBuf> = vec![
-        // Bundled with app
-        app.path_resolver().resource_dir().map(|p| p.join("gstreamer")).unwrap_or_default(),
-        // AppData location
-        dirs::data_local_dir().map(|p| p.join("Cinny").join("gstreamer")).unwrap_or_default(),
-        // System GStreamer
-        std::path::PathBuf::from("C:\\gstreamer\\1.0\\msvc_x86_64"),
-    ];
+    let mut possible_paths: Vec<std::path::PathBuf> = Vec::new();
+    
+    // Bundled with app
+    if let Some(p) = app.path_resolver().resource_dir() {
+        possible_paths.push(p.join("gstreamer"));
+    }
+    
+    // AppData location (hardcoded for Windows)
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            possible_paths.push(std::path::PathBuf::from(local_app_data).join("Cinny").join("gstreamer"));
+        }
+    }
+    
+    // System GStreamer
+    possible_paths.push(std::path::PathBuf::from("C:\\gstreamer\\1.0\\msvc_x86_64"));
 
     for gst_root in possible_paths {
         let gst_bin = gst_root.join("bin");
