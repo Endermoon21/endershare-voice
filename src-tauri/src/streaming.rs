@@ -228,68 +228,112 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     Ok(sources)
 }
 
-/// Build GStreamer pipeline string for WHIP streaming
-fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
-    let mut pipeline = String::new();
+/// Build video capture pipeline segment based on source
+fn build_video_capture(config: &StreamConfig) -> String {
+    let mut video = String::new();
 
-    // Screen capture with D3D11 (Windows)
     #[cfg(target_os = "windows")]
     {
-        pipeline.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
+        // Check if capturing a specific window or full desktop
+        if config.source_id.starts_with("title=") {
+            // Window capture using window title
+            let title = &config.source_id[6..]; // Strip "title=" prefix
+            video.push_str(&format!(
+                "d3d11screencapturesrc window-name=\"{}\" show-cursor=true capture-api=wgc",
+                title
+            ));
+        } else {
+            // Full desktop capture
+            video.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
+        }
 
         // Framerate caps
-        pipeline.push_str(&format!(
+        video.push_str(&format!(
             " ! video/x-raw(memory:D3D11Memory),framerate={}/1",
             config.fps
         ));
 
         // Convert BGRA to NV12 in GPU memory
-        pipeline.push_str(" ! d3d11convert");
-        pipeline.push_str(&format!(
+        video.push_str(" ! d3d11convert");
+        video.push_str(&format!(
             " ! video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}",
             config.width, config.height
         ));
+
+        // Queue for stability - small buffer for low latency
+        video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
+
+        // Download from GPU memory to system memory for whipclientsink
+        video.push_str(" ! d3d11download ! videoconvert");
     }
 
-    // Linux capture (X11)
     #[cfg(target_os = "linux")]
     {
-        pipeline.push_str("ximagesrc show-pointer=true use-damage=false");
-        pipeline.push_str(" ! videoconvert");
-        pipeline.push_str(&format!(
+        video.push_str("ximagesrc show-pointer=true use-damage=false");
+        video.push_str(" ! videoconvert");
+        video.push_str(&format!(
             " ! videoscale ! video/x-raw,format=NV12,width={},height={},framerate={}/1",
             config.width, config.height, config.fps
         ));
+        video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
     }
 
-    // macOS capture
     #[cfg(target_os = "macos")]
     {
-        pipeline.push_str("avfvideosrc capture-screen=true");
-        pipeline.push_str(" ! videoconvert");
-        pipeline.push_str(&format!(
+        video.push_str("avfvideosrc capture-screen=true");
+        video.push_str(" ! videoconvert");
+        video.push_str(&format!(
             " ! videoscale ! video/x-raw,format=NV12,width={},height={},framerate={}/1",
             config.width, config.height, config.fps
         ));
+        video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
     }
 
-    // Queue for stability - small buffer for low latency
-    pipeline.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
+    video
+}
 
-    // Download from GPU memory to system memory for whipclientsink
+/// Build audio capture pipeline segment (system audio loopback)
+fn build_audio_capture() -> String {
+    let mut audio = String::new();
+
     #[cfg(target_os = "windows")]
-    pipeline.push_str(" ! d3d11download ! videoconvert");
+    {
+        // WASAPI loopback capture for system audio
+        audio.push_str("wasapisrc loopback=true low-latency=true");
+        audio.push_str(" ! audioconvert ! audioresample");
+        audio.push_str(" ! audio/x-raw,rate=48000,channels=2");
+        audio.push_str(" ! queue max-size-buffers=10 max-size-time=0 max-size-bytes=0");
+    }
 
-    // WHIP sink with optimized settings for game streaming
-    // - congestion-control=gcc: Google Congestion Control for adaptive bitrate
-    // - do-fec=true: Forward Error Correction for packet loss recovery
-    // - do-retransmission=true: NACK-based retransmission for reliability
-    // - Encoder auto-selected by rank: nvh264enc > mfh264enc > x264enc
+    #[cfg(target_os = "linux")]
+    {
+        // PulseAudio monitor source for system audio
+        audio.push_str("pulsesrc device=\"$(pactl get-default-sink).monitor\"");
+        audio.push_str(" ! audioconvert ! audioresample");
+        audio.push_str(" ! audio/x-raw,rate=48000,channels=2");
+        audio.push_str(" ! queue max-size-buffers=10 max-size-time=0 max-size-bytes=0");
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS audio capture (requires BlackHole or similar virtual device)
+        audio.push_str("osxaudiosrc");
+        audio.push_str(" ! audioconvert ! audioresample");
+        audio.push_str(" ! audio/x-raw,rate=48000,channels=2");
+        audio.push_str(" ! queue max-size-buffers=10 max-size-time=0 max-size-bytes=0");
+    }
+
+    audio
+}
+
+/// Build GStreamer pipeline string for WHIP streaming
+fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     let bitrate_bps = (config.bitrate * 1000) as u64;
     let start_bitrate = bitrate_bps * 3 / 4; // Start at 75% of max for faster ramp
 
+    // Build WHIP sink properties
     let mut whip_props = format!(
-        " ! whipclientsink name=whip \
+        "whipclientsink name=whip \
 video-caps=\"video/x-h264,profile=constrained-baseline\" \
 start-bitrate={} \
 min-bitrate=500000 \
@@ -311,9 +355,25 @@ signaller::whip-endpoint=\"{}\"",
         whip_props.push_str(&format!(" turn-servers=\"<{}>\"", turn));
     }
 
-    pipeline.push_str(&whip_props);
+    // Add audio-caps if audio is enabled
+    if config.audio_enabled {
+        whip_props.push_str(" audio-caps=\"audio/x-opus\"");
+    }
 
-    pipeline
+    // Build complete pipeline
+    let video_pipeline = build_video_capture(config);
+
+    if config.audio_enabled {
+        // Video + Audio pipeline using whipclientsink's multiple pad support
+        let audio_pipeline = build_audio_capture();
+        format!(
+            "{} ! whip. {} ! whip. {}",
+            video_pipeline, audio_pipeline, whip_props
+        )
+    } else {
+        // Video-only pipeline
+        format!("{} ! {}", video_pipeline, whip_props)
+    }
 }
 
 /// Start streaming to WHIP endpoint using GStreamer
