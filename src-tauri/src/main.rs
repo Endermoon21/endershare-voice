@@ -41,7 +41,7 @@ fn main() {
             streaming::start_stream,
             streaming::stop_stream,
             streaming::get_stream_status,
-            streaming::check_ffmpeg,
+            streaming::check_gstreamer,
         ])
         .run(context)
         .expect("error while building tauri application")

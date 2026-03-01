@@ -16,5 +16,5 @@ export type { GameStreamState, GameStreamContextValue } from "./GameStreamContex
 // Game Stream UI
 export { GameStreamButton } from "./GameStreamButton";
 
-// Native Streaming (Tauri FFmpeg)
+// Native Streaming (GStreamer WHIP)
 export * from "./nativeStreaming";
