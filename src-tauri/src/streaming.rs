@@ -276,44 +276,16 @@ fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // Queue for stability
     pipeline.push_str(" ! queue max-size-buffers=1");
 
-    // Download from GPU memory to system memory for software encoder
+    // Download from GPU memory to system memory for whipclientsink
     #[cfg(target_os = "windows")]
-    pipeline.push_str(" ! d3d11download ! videoconvert ! video/x-raw,format=I420");
+    pipeline.push_str(" ! d3d11download ! videoconvert");
 
-    // H.264 encoder - use OpenH264 (bundled with GStreamer)
-    #[cfg(target_os = "windows")]
-    {
-        let bitrate_bps = config.bitrate * 1000;
-        pipeline.push_str(&format!(
-            " ! openh264enc bitrate={} complexity=low",
-            bitrate_bps
-        ));
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let bitrate_kbps = config.bitrate;
-        pipeline.push_str(&format!(
-            " ! x264enc bitrate={} tune=zerolatency speed-preset=ultrafast",
-            bitrate_kbps
-        ));
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        let bitrate_kbps = config.bitrate;
-        pipeline.push_str(&format!(
-            " ! vtenc_h264 bitrate={} realtime=true",
-            bitrate_kbps
-        ));
-    }
-
-    // H264 parser (whipclientsink handles RTP internally)
-    pipeline.push_str(" ! h264parse");
-
-    // WHIP sink with auth
+    // WHIP sink - handles encoding internally with video-caps
+    // whipclientsink will auto-select encoder (nvh264enc, mfh264enc, x264enc, etc.)
+    let bitrate_bps = (config.bitrate * 1000) as u64;
     let mut whip_props = format!(
-        " ! whipclientsink name=whip signaller::whip-endpoint=\"{}\"",
+        " ! whipclientsink name=whip video-caps=\"video/x-h264\" max-bitrate={} signaller::whip-endpoint=\"{}\"",
+        bitrate_bps,
         config.whip_url
     );
 
