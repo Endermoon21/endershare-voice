@@ -455,14 +455,14 @@ fn build_gstreamer_args(config: &StreamConfig) -> Result<Vec<String>, String> {
 
         // Framerate caps
         pipeline.push_str(&format!(
-            " ! video/x-raw(memory:D3D11Memory),framerate={}/1",
+            " ! \"video/x-raw(memory:D3D11Memory),framerate={}/1\"",
             config.fps
         ));
 
         // Convert BGRA to NV12 in GPU memory
         pipeline.push_str(" ! d3d11convert");
         pipeline.push_str(&format!(
-            " ! video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}",
+            " ! \"video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}\"",
             config.width, config.height
         ));
     }
