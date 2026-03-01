@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
-type UpdateStatus = 'checking' | 'available' | 'downloading' | 'ready' | 'none' | 'error';
+type UpdateStatus = 'checking' | 'available' | 'downloading' | 'ready' | 'restart-manual' | 'none' | 'error';
 
 interface UpdateState {
   status: UpdateStatus;
@@ -67,11 +67,31 @@ export function UpdateBanner() {
       
       setState(s => ({ ...s, status: 'ready' }));
       
+      // Try to relaunch, but if it fails or takes too long, show manual restart message
       setTimeout(async () => {
-        if (tauri.process?.relaunch) {
-          await tauri.process.relaunch();
+        try {
+          if (tauri.process?.relaunch) {
+            await tauri.process.relaunch();
+          } else {
+            // No relaunch available, ask user to restart manually
+            setState(s => ({ ...s, status: 'restart-manual' }));
+          }
+        } catch (e) {
+          console.error('[Update] Relaunch failed:', e);
+          setState(s => ({ ...s, status: 'restart-manual' }));
         }
       }, 1500);
+
+      // If still showing after 5 seconds, switch to manual restart message
+      setTimeout(() => {
+        setState(s => {
+          if (s.status === 'ready') {
+            return { ...s, status: 'restart-manual' };
+          }
+          return s;
+        });
+      }, 5000);
+
     } catch (e: any) {
       console.error('[Update] Install failed:', e);
       setState({ status: 'error', error: e.message || 'Update failed' });
@@ -117,6 +137,7 @@ export function UpdateBanner() {
         .update-banner.available { background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%); }
         .update-banner.downloading { background: linear-gradient(135deg, #5865f2 0%, #4752c4 100%); }
         .update-banner.ready { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
+        .update-banner.restart-manual { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
         .update-banner.error { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
         .update-btn {
           padding: 6px 14px;
@@ -158,6 +179,13 @@ export function UpdateBanner() {
         )}
         
         {state.status === 'ready' && <span>✓ Installed! Restarting...</span>}
+        
+        {state.status === 'restart-manual' && (
+          <>
+            <span>✓ Update installed! Please restart the app.</span>
+            <button className="update-btn update-close" onClick={() => setDismissed(true)}>✕</button>
+          </>
+        )}
         
         {state.status === 'error' && (
           <>
