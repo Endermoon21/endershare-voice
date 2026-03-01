@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny",
-    "version": "4.10.86"
+    "version": "4.10.92"
   },
   "build": {
     "withGlobalTauri": true,
@@ -26,12 +26,13 @@
         "resources/WebView2Loader.dll": ""
       },
       "externalBin": [
-        "binaries/ffmpeg"
+        "binaries/ffmpeg",
+        "binaries/gst-launch-1.0"
       ],
-      "copyright": "\u00a9 2026 endershare.org",
+      "copyright": "© 2026 endershare.org",
       "category": "SocialNetworking",
       "shortDescription": "Matrix client with voice channels and game streaming",
-      "longDescription": "Cinny with LiveKit voice integration, RNNoise, Discord-style UI, and native game streaming via FFmpeg WHIP",
+      "longDescription": "Cinny with LiveKit voice integration, RNNoise, Discord-style UI, and native game streaming via FFmpeg/GStreamer WHIP",
       "deb": {
         "depends": []
       },
@@ -79,6 +80,11 @@
         "scope": [
           {
             "name": "binaries/ffmpeg",
+            "sidecar": true,
+            "args": true
+          },
+          {
+            "name": "binaries/gst-launch-1.0",
             "sidecar": true,
             "args": true
           }

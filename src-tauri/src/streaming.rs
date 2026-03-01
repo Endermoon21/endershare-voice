@@ -607,13 +607,15 @@ pub async fn check_gstreamer(app: AppHandle) -> Result<GStreamerInfo, String> {
         version, has_whip, has_d3d11, has_x264, has_openh264
     ));
 
+    // Force all capabilities to true - plugin detection via --gst-plugin-help is unreliable
+    // The actual pipeline will fail if plugins are missing, which is better UX
     Ok(GStreamerInfo {
         available: true,
         version,
-        has_whip,
-        has_d3d11,
-        has_x264,
-        has_openh264,
+        has_whip: true,
+        has_d3d11: true,
+        has_x264: true,
+        has_openh264: true,
     })
 }
 
@@ -645,20 +647,19 @@ fn build_gstreamer_args(config: &StreamConfig) -> Result<Vec<String>, String> {
     #[cfg(target_os = "windows")]
     {
         pipeline_parts.push(format!(
-            "'video/x-raw(memory:D3D11Memory),framerate={}/1'",
+            "video/x-raw(memory:D3D11Memory),framerate={}/1",
             config.fps
         ));
 
         // D3D11 convert and scale - stay in GPU memory
         pipeline_parts.push("d3d11convert".to_string());
         pipeline_parts.push(format!(
-            "'video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}'",
+            "video/x-raw(memory:D3D11Memory),format=NV12,width={},height={}",
             config.width, config.height
         ));
 
-        // Keep in D3D11 memory for hardware encoder (mfh264enc/nvh264enc)
-        // whipclientsink accepts video/x-raw(memory:D3D11Memory) and auto-selects
-        // hardware encoder if available
+        // Queue for stability before whipclientsink
+        pipeline_parts.push("queue max-size-buffers=1".to_string());
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -688,7 +689,7 @@ fn build_gstreamer_args(config: &StreamConfig) -> Result<Vec<String>, String> {
 
     let mut whip_args = format!(
         "whipclientsink name=whip min-bitrate={} max-bitrate={} start-bitrate={} \
-         congestion-control=gcc signaller::whip-endpoint=\"{}\"",
+         congestion-control=google-congestion-control video-caps=video/x-h264 signaller::whip-endpoint=\"{}\"",
         min_bitrate,
         max_bitrate,
         start_bitrate,
