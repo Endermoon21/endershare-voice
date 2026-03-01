@@ -8,12 +8,12 @@
 //! Uses gstreamer-rs crate directly instead of spawning gst-launch-1.0 process.
 
 use gstreamer as gst;
-use gst::prelude::*;
+use gst::prelude::{Cast, ElementExt, ElementExtManual, GstBinExt, GstObjectExt};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::fs::OpenOptions;
 use std::io::Write;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 /// Capture source (screen or window)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -320,15 +320,16 @@ pub async fn start_stream(
     let pipeline_str = build_gstreamer_pipeline(&config);
     log_to_file(&format!("GStreamer pipeline: {}", pipeline_str));
 
-    // Parse and create pipeline
-    let element = gst::parse_launch(&pipeline_str)
+    // Parse and create pipeline using gst_parse_launch
+    let pipeline = gst::parse::launch(&pipeline_str)
         .map_err(|e| {
             let msg = format!("Failed to parse pipeline: {}", e);
             log_to_file(&msg);
             msg
         })?;
 
-    let pipeline = element.downcast::<gst::Pipeline>()
+    // Cast to Pipeline
+    let pipeline: gst::Pipeline = pipeline.downcast()
         .map_err(|_| {
             let msg = "Pipeline is not a GstPipeline";
             log_to_file(msg);
@@ -373,16 +374,21 @@ pub async fn start_stream(
     // Spawn message handler thread
     let shared = state.shared.clone();
     std::thread::spawn(move || {
-        for msg in bus.iter_timed(gst::ClockTime::NONE) {
+        loop {
+            let msg = match bus.timed_pop(gst::ClockTime::from_seconds(1)) {
+                Some(m) => m,
+                None => continue,
+            };
+
+            use gst::MessageView;
             match msg.view() {
-                gst::MessageView::Eos(..) => {
+                MessageView::Eos(..) => {
                     log_to_file("Pipeline reached EOS");
                     break;
                 }
-                gst::MessageView::Error(err) => {
+                MessageView::Error(err) => {
                     let error_msg = format!(
-                        "GStreamer error from {:?}: {} ({:?})",
-                        err.src().map(|s| s.path_string()),
+                        "GStreamer error: {} ({:?})",
                         err.error(),
                         err.debug()
                     );
@@ -392,19 +398,7 @@ pub async fn start_stream(
                     }
                     break;
                 }
-                gst::MessageView::StateChanged(state_changed) => {
-                    // Only log state changes for the pipeline itself
-                    if let Some(src) = state_changed.src() {
-                        if src.type_().name() == "GstPipeline" {
-                            log_to_file(&format!(
-                                "Pipeline state: {:?} -> {:?}",
-                                state_changed.old(),
-                                state_changed.current()
-                            ));
-                        }
-                    }
-                }
-                gst::MessageView::Warning(warning) => {
+                MessageView::Warning(warning) => {
                     log_to_file(&format!(
                         "GStreamer warning: {} ({:?})",
                         warning.error(),
@@ -412,6 +406,13 @@ pub async fn start_stream(
                     ));
                 }
                 _ => {}
+            }
+
+            // Check if we should stop
+            if let Ok(running) = shared.is_running.lock() {
+                if !*running {
+                    break;
+                }
             }
         }
 
@@ -439,12 +440,13 @@ pub async fn stop_stream(app: AppHandle) -> Result<(), String> {
         log_to_file("Stopping GStreamer pipeline");
 
         // Send EOS to gracefully stop
-        let _ = pipeline.send_event(gst::event::Eos::new());
+        let eos_event: gst::Event = gst::event::Eos::new();
+        let _: bool = pipeline.send_event(eos_event);
 
         // Wait briefly for EOS to propagate, then force stop
         std::thread::sleep(std::time::Duration::from_millis(100));
 
-        let _ = pipeline.set_state(gst::State::Null);
+        let _result = pipeline.set_state(gst::State::Null);
 
         log_to_file("GStreamer pipeline stopped");
     }
