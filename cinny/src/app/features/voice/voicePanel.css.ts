@@ -680,8 +680,29 @@ globalStyle(`${ProfileItemWithCopy}:hover ${ProfileCopyIcon}`, {
 });
 
 // ===========================================
-// CONNECTION STATS MODAL
+// CONNECTION STATS MODAL (Discord-style)
 // ===========================================
+export const StatsModalOverlay = style({
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 9999,
+  backdropFilter: 'blur(4px)',
+});
+
+export const StatsModalContent = style({
+  backgroundColor: butter.surface,
+  borderRadius: '12px',
+  width: '380px',
+  maxWidth: '95vw',
+  boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6)',
+  border: `1px solid ${butter.border}`,
+  overflow: 'hidden',
+});
+
 export const StatsModal = style({
   padding: '16px',
 });
@@ -690,11 +711,20 @@ export const StatsHeader = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: '16px',
+  padding: '14px 16px',
+  borderBottom: `1px solid ${butter.border}`,
+  backgroundColor: butter.background,
+});
+
+export const StatsHeaderTitle = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  color: butter.text,
 });
 
 export const StatsTitle = style({
-  fontSize: '18px',
+  fontSize: '16px',
   fontWeight: 600,
   color: butter.text,
 });
@@ -716,6 +746,131 @@ export const StatsCloseBtn = style({
   },
 });
 
+// Ping Graph Section
+export const PingGraphSection = style({
+  padding: '16px',
+  borderBottom: `1px solid ${butter.border}`,
+});
+
+export const PingGraphHeader = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: '12px',
+});
+
+export const PingGraphLabel = style({
+  fontSize: '13px',
+  fontWeight: 600,
+  color: butter.textMuted,
+  textTransform: 'uppercase',
+  letterSpacing: '0.02em',
+});
+
+export const PingGraphContainer = style({
+  display: 'flex',
+  gap: '8px',
+  alignItems: 'flex-end',
+});
+
+export const PingGraphSvg = style({
+  flex: 1,
+  borderRadius: '4px',
+  backgroundColor: 'rgba(255, 251, 222, 0.02)',
+});
+
+export const PingGraphScale = style({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  height: '80px',
+  fontSize: '10px',
+  color: butter.textMuted,
+  textAlign: 'right',
+  paddingRight: '2px',
+});
+
+// Ping Stats Row (below graph)
+export const PingStatsRow = style({
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: '14px',
+  padding: '10px 12px',
+  backgroundColor: 'rgba(255, 251, 222, 0.03)',
+  borderRadius: '8px',
+});
+
+export const PingStat = style({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '2px',
+});
+
+export const PingStatLabel = style({
+  fontSize: '10px',
+  fontWeight: 600,
+  color: butter.textMuted,
+  textTransform: 'uppercase',
+  letterSpacing: '0.02em',
+});
+
+export const PingStatValue = style({
+  fontSize: '14px',
+  fontWeight: 700,
+  color: butter.text,
+});
+
+// Other Stats Section
+export const OtherStatsSection = style({
+  padding: '14px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '10px',
+  borderBottom: `1px solid ${butter.border}`,
+});
+
+export const OtherStatRow = style({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+});
+
+export const OtherStatLabel = style({
+  fontSize: '13px',
+  color: butter.textMuted,
+});
+
+export const OtherStatValue = style({
+  fontSize: '13px',
+  fontWeight: 600,
+  color: butter.text,
+});
+
+// Ping Legend
+export const PingLegend = style({
+  display: 'flex',
+  justifyContent: 'center',
+  gap: '16px',
+  padding: '12px 16px',
+  backgroundColor: butter.background,
+});
+
+export const PingLegendItem = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  fontSize: '11px',
+  color: butter.textMuted,
+});
+
+export const PingLegendDot = style({
+  width: '8px',
+  height: '8px',
+  borderRadius: '2px',
+});
+
+// Legacy styles (kept for compatibility)
 export const StatsGrid = style({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
@@ -770,11 +925,12 @@ export const StatsQualityLabel = style({
 });
 
 export const StatsQualityBadge = style({
-  padding: '4px 12px',
-  borderRadius: '12px',
-  fontSize: '13px',
+  padding: '4px 10px',
+  borderRadius: '10px',
+  fontSize: '11px',
   fontWeight: 600,
-  textTransform: 'capitalize',
+  textTransform: 'uppercase',
+  letterSpacing: '0.02em',
 });
 
 // Quality badge colors
