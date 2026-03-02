@@ -5,11 +5,11 @@ import {
   loadRnnoise,
 } from "@sapphi-red/web-noise-suppressor";
 // @ts-ignore - vite URL imports
-import rnnoiseWorkletPath from "@sapphi-red/web-noise-suppressor/rnnoiseWorklet?url";
+import rnnoiseWorkletPath from "@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url";
 // @ts-ignore
 import rnnoiseWasmPath from "@sapphi-red/web-noise-suppressor/rnnoise.wasm?url";
 // @ts-ignore
-import rnnoiseSimdWasmPath from "@sapphi-red/web-noise-suppressor/rnnoise-simd.wasm?url";
+import rnnoiseSimdWasmPath from "@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url";
 
 export interface UseNoiseFilterReturn {
   setNoiseFilterEnabled: (enabled: boolean) => Promise<void>;
