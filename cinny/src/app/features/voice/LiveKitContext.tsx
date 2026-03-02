@@ -275,7 +275,14 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       room.on(RoomEvent.ActiveSpeakersChanged, updateParticipants);
       room.on(RoomEvent.TrackSubscribed, (track, pub, participant) => { handleTrackSubscribed(track as RemoteTrack, pub, participant); updateParticipants(); });
       room.on(RoomEvent.TrackUnsubscribed, (track, pub, participant) => { handleTrackUnsubscribed(track as RemoteTrack, pub, participant); updateParticipants(); });
-      room.on(RoomEvent.LocalTrackPublished, updateParticipants);
+      room.on(RoomEvent.LocalTrackPublished, (pub) => {
+        updateParticipants();
+        // Capture microphone track for RNNoise filter
+        if (pub.track && pub.track.kind === 'audio') {
+          console.log('[LiveKit] Local audio track published, setting for RNNoise');
+          setMicrophoneTrack(pub.track);
+        }
+      });
       room.on(RoomEvent.LocalTrackUnpublished, updateParticipants);
       room.on(RoomEvent.Disconnected, () => { setIsConnected(false); setCurrentRoom(null); setParticipants([]); setScreenShareInfo(null); setShowVoiceView(false); });
 
