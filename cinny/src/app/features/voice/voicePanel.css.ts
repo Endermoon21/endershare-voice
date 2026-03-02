@@ -397,61 +397,116 @@ export const NoiseFilterBtnActive = style({
 });
 
 // ===========================================
-// RNN TOAST NOTIFICATION
+// RNN NOISE MODAL
 // ===========================================
-const toastSlideIn = keyframes({
-  '0%': { opacity: 0, transform: 'translateY(10px)' },
+const modalFadeIn = keyframes({
+  '0%': { opacity: 0, transform: 'translateY(8px)' },
   '100%': { opacity: 1, transform: 'translateY(0)' },
 });
 
-const toastSlideOut = keyframes({
-  '0%': { opacity: 1, transform: 'translateY(0)' },
-  '100%': { opacity: 0, transform: 'translateY(-10px)' },
-});
-
-export const RNNoiseToast = style({
+export const RNNoiseModal = style({
   position: 'absolute',
   bottom: '100%',
-  left: '50%',
-  transform: 'translateX(-50%)',
+  right: '0',
   marginBottom: '8px',
-  padding: '8px 12px',
+  width: '240px',
   backgroundColor: butter.surface,
-  borderRadius: '6px',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  borderRadius: '8px',
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
   border: `1px solid ${butter.border}`,
+  zIndex: 1000,
+  animation: `${modalFadeIn} 0.15s ${discordEase}`,
+  overflow: 'hidden',
+});
+
+export const RNNoiseModalHeader = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
-  whiteSpace: 'nowrap',
-  zIndex: 1000,
-  animation: `${toastSlideIn} 0.2s ${discordEase}`,
+  gap: '10px',
+  padding: '12px 14px',
+  borderBottom: `1px solid ${butter.border}`,
 });
 
-export const RNNoiseToastClosing = style({
-  animation: `${toastSlideOut} 0.2s ${discordEase} forwards`,
-});
-
-export const RNNoiseToastIcon = style({
-  width: '18px',
-  height: '18px',
+export const RNNoiseModalIcon = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  color: butter.text,
 });
 
-export const RNNoiseToastText = style({
+export const RNNoiseModalTitle = style({
+  fontSize: '14px',
+  fontWeight: 600,
+  color: butter.text,
+});
+
+export const RNNoiseModalContent = style({
+  padding: '10px 14px',
+});
+
+export const RNNoiseModalRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+});
+
+export const RNNoiseModalLabel = style({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+});
+
+export const RNNoiseModalLabelText = style({
   fontSize: '13px',
   fontWeight: 500,
   color: butter.text,
 });
 
-export const RNNoiseToastEnabled = style({
-  color: butter.success,
+export const RNNoiseModalLabelDesc = style({
+  fontSize: '11px',
+  color: butter.textMuted,
 });
 
-export const RNNoiseToastDisabled = style({
-  color: butter.textMuted,
+// Toggle Switch
+export const ToggleSwitch = style({
+  width: '40px',
+  height: '22px',
+  borderRadius: '11px',
+  backgroundColor: butter.surfaceActive,
+  border: 'none',
+  padding: '2px',
+  cursor: 'pointer',
+  position: 'relative',
+  transition: `background-color 0.2s ${discordEase}`,
+  flexShrink: 0,
+  ':hover': {
+    backgroundColor: butter.surfaceHover,
+  },
+});
+
+export const ToggleSwitchActive = style({
+  backgroundColor: butter.success,
+  ':hover': {
+    backgroundColor: '#1f9150',
+  },
+});
+
+export const ToggleSwitchKnob = style({
+  width: '18px',
+  height: '18px',
+  borderRadius: '50%',
+  backgroundColor: butter.text,
+  display: 'block',
+  transition: `transform 0.2s ${discordEase}`,
+  selectors: {
+    [`${ToggleSwitch}:not(${ToggleSwitchActive}) &`]: {
+      transform: 'translateX(0)',
+    },
+    [`${ToggleSwitchActive} &`]: {
+      transform: 'translateX(18px)',
+    },
+  },
 });
 
 // ===========================================

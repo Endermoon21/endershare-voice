@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import classNames from 'classnames';
 import { useLiveKitContext } from './LiveKitContext';
 import { PingVisualizer } from './PingVisualizer';
@@ -45,57 +45,68 @@ export function VoiceBanner() {
     setNoiseFilterEnabled,
   } = useLiveKitContext();
 
-  const [showToast, setShowToast] = useState(false);
-  const [toastClosing, setToastClosing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ enabled: boolean } | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const roomDisplayName = currentRoom
     ? currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1)
     : 'Voice Channel';
 
-  const handleNoiseFilter = () => {
+  const handleToggle = () => {
     if (!isNoiseFilterPending) {
-      const newState = !isNoiseFilterEnabled;
-      setNoiseFilterEnabled(newState);
-
-      // Show toast
-      setToastMessage({ enabled: newState });
-      setShowToast(true);
-      setToastClosing(false);
+      setNoiseFilterEnabled(!isNoiseFilterEnabled);
     }
   };
 
-  // Auto-hide toast after 2 seconds
+  // Close modal when clicking outside
   useEffect(() => {
-    if (showToast) {
-      const hideTimer = setTimeout(() => {
-        setToastClosing(true);
-        setTimeout(() => {
-          setShowToast(false);
-          setToastClosing(false);
-        }, 200);
-      }, 2000);
-      return () => clearTimeout(hideTimer);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowModal(false);
+      }
+    };
+
+    if (showModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showToast, toastMessage]);
+  }, [showModal]);
 
   return (
     <div className={css.VoiceBanner} style={{ position: 'relative' }}>
-      {/* RNNoise Toast */}
-      {showToast && toastMessage && (
-        <div className={classNames(css.RNNoiseToast, { [css.RNNoiseToastClosing]: toastClosing })}>
-          <span className={classNames(css.RNNoiseToastIcon, {
-            [css.RNNoiseToastEnabled]: toastMessage.enabled,
-            [css.RNNoiseToastDisabled]: !toastMessage.enabled,
-          })}>
-            {toastMessage.enabled ? <RNNoiseActiveIcon /> : <RNNoiseIcon />}
-          </span>
-          <span className={classNames(css.RNNoiseToastText, {
-            [css.RNNoiseToastEnabled]: toastMessage.enabled,
-            [css.RNNoiseToastDisabled]: !toastMessage.enabled,
-          })}>
-            {toastMessage.enabled ? 'RNNoise Enabled' : 'RNNoise Disabled'}
-          </span>
+      {/* RNNoise Modal */}
+      {showModal && (
+        <div ref={modalRef} className={css.RNNoiseModal}>
+          <div className={css.RNNoiseModalHeader}>
+            <span className={css.RNNoiseModalIcon}>
+              {isNoiseFilterEnabled ? <RNNoiseActiveIcon /> : <RNNoiseIcon />}
+            </span>
+            <span className={css.RNNoiseModalTitle}>Noise Suppression</span>
+          </div>
+          <div className={css.RNNoiseModalContent}>
+            <div className={css.RNNoiseModalRow}>
+              <div className={css.RNNoiseModalLabel}>
+                <span className={css.RNNoiseModalLabelText}>RNNoise</span>
+                <span className={css.RNNoiseModalLabelDesc}>AI-powered noise removal</span>
+              </div>
+              <button
+                className={classNames(css.ToggleSwitch, {
+                  [css.ToggleSwitchActive]: isNoiseFilterEnabled,
+                })}
+                onClick={handleToggle}
+                disabled={isNoiseFilterPending}
+                style={{ opacity: isNoiseFilterPending ? 0.5 : 1 }}
+              >
+                <span className={css.ToggleSwitchKnob} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -108,20 +119,19 @@ export function VoiceBanner() {
             <span className={css.VoiceChannelName}>{roomDisplayName}</span>
           </div>
         </div>
-        
+
         <div className={css.VoiceBannerControls}>
           <button
+            ref={buttonRef}
             className={classNames(css.NoiseFilterBtn, {
               [css.NoiseFilterBtnActive]: isNoiseFilterEnabled,
             })}
-            onClick={handleNoiseFilter}
-            disabled={isNoiseFilterPending}
-            title={isNoiseFilterEnabled ? 'Disable RNNoise' : 'Enable RNNoise'}
-            style={{ opacity: isNoiseFilterPending ? 0.5 : 1 }}
+            onClick={() => setShowModal(!showModal)}
+            title="Noise Suppression Settings"
           >
             {isNoiseFilterEnabled ? <RNNoiseActiveIcon /> : <RNNoiseIcon />}
           </button>
-          
+
           <button
             className={css.DisconnectBtn}
             onClick={disconnect}
