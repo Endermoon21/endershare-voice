@@ -12,7 +12,7 @@ import {
   VideoPresets,
 } from "livekit-client";
 
-import { useDeepFilterNet } from "./useDeepFilterNet";
+import { useNoiseFilter } from "./useNoiseFilter";
 const LIVEKIT_URL = "wss://livekit.endershare.org";
 const TOKEN_SERVER_URL = "https://token.endershare.org";
 const DIAGNOSTICS_URL = "https://token.endershare.org/diagnostics";
@@ -65,8 +65,6 @@ interface LiveKitContextValue {
   isNoiseFilterEnabled: boolean;
   isNoiseFilterPending: boolean;
   setNoiseFilterEnabled: (enabled: boolean) => Promise<void>;
-  suppressionLevel: number;
-  setSuppressionLevel: (level: number) => void;
   isNoiseFilterSupported: boolean;
 }
 
@@ -86,7 +84,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
   const roomRef = useRef<Room | null>(null);
   const [microphoneTrack, setMicrophoneTrack] = useState<any>(null);
-  const noiseFilter = useDeepFilterNet(microphoneTrack);
+  const noiseFilter = useNoiseFilter(microphoneTrack);
   const audioContainerRef = useRef<HTMLDivElement | null>(null);
   const screenShareVideoRef = useRef<HTMLVideoElement | null>(null);
   const diagnosticsIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -381,8 +379,6 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isNoiseFilterEnabled: noiseFilter.isNoiseFilterEnabled,
       isNoiseFilterPending: noiseFilter.isNoiseFilterPending,
       setNoiseFilterEnabled: noiseFilter.setNoiseFilterEnabled,
-      suppressionLevel: noiseFilter.suppressionLevel,
-      setSuppressionLevel: noiseFilter.setSuppressionLevel,
       isNoiseFilterSupported: noiseFilter.isSupported
     }}>
       {children}

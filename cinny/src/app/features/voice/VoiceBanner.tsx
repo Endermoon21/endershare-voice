@@ -43,8 +43,6 @@ export function VoiceBanner() {
     isNoiseFilterEnabled,
     isNoiseFilterPending,
     setNoiseFilterEnabled,
-    suppressionLevel,
-    setSuppressionLevel,
     isNoiseFilterSupported,
   } = useLiveKitContext();
 
@@ -65,10 +63,6 @@ export function VoiceBanner() {
     if (!isNoiseFilterPending) {
       setNoiseFilterEnabled(!isNoiseFilterEnabled);
     }
-  };
-
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSuppressionLevel(parseInt(e.target.value, 10));
   };
 
   // Close modal when clicking outside
@@ -105,7 +99,7 @@ export function VoiceBanner() {
             {/* Enable/Disable Toggle */}
             <div className={css.RNNoiseModalRow}>
               <div className={css.RNNoiseModalLabel}>
-                <span className={css.RNNoiseModalLabelText}>DeepFilterNet</span>
+                <span className={css.RNNoiseModalLabelText}>RNNoise</span>
                 <span className={css.RNNoiseModalLabelDesc}>AI-powered noise removal</span>
               </div>
               <button
@@ -119,24 +113,6 @@ export function VoiceBanner() {
                 <span className={css.ToggleSwitchKnob} />
               </button>
             </div>
-
-            {/* Suppression Level Slider */}
-            {isNoiseFilterEnabled && (
-              <div className={css.RNNoiseModalRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-                <div className={css.RNNoiseModalLabel}>
-                  <span className={css.RNNoiseModalLabelText}>Suppression Level</span>
-                  <span className={css.RNNoiseModalLabelDesc}>{suppressionLevel}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={suppressionLevel}
-                  onChange={handleSliderChange}
-                  className={css.SuppressionSlider}
-                />
-              </div>
-            )}
 
             {/* Not supported warning */}
             {!isNoiseFilterSupported && (
