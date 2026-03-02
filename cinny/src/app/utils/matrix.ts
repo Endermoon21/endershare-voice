@@ -153,11 +153,15 @@ export const uploadContent = async (
   const { name, fileType, hideFilename, onProgress, onPromise, onSuccess, onError } = options;
 
   // Try native upload in Tauri (bypasses WebView CORS issues)
-  if (typeof window !== 'undefined' && '__TAURI__' in window) {
+  const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+  if (isTauri) {
     try {
       const { nativeUploadFile } = await import('./nativeUpload');
       const homeserver = mx.getHomeserverUrl();
       const accessToken = mx.getAccessToken();
+
+      console.log('[Native Upload] Starting upload to:', homeserver);
+      console.log('[Native Upload] File size:', file.size, 'type:', file.type);
 
       if (!accessToken) {
         throw new Error('No access token available');
@@ -181,12 +185,16 @@ export const uploadContent = async (
         } : undefined
       );
 
+      console.log('[Native Upload] Success:', mxc);
       resolvePromise!({ content_uri: mxc });
       onSuccess(mxc);
       return;
     } catch (e: any) {
-      console.error('Native upload failed, falling back to SDK:', e);
-      // Fall through to standard SDK upload
+      // In Tauri, don't fall back to SDK - it will also fail due to CORS
+      console.error('[Native Upload] Failed:', e);
+      const errorMsg = e?.message || e?.toString() || 'Native upload failed';
+      onError(new MatrixError({ error: errorMsg, errcode: 'M_UNKNOWN' }));
+      return;
     }
   }
 

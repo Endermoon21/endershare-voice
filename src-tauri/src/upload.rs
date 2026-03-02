@@ -59,13 +59,22 @@ pub async fn native_upload_file(
         file_data.len(),
         content_type
     );
+    log::info!("Homeserver: {}", homeserver);
+    log::info!("Access token length: {}", access_token.len());
 
-    // Build the upload URL
+    // Build the upload URL - strip any trailing path from homeserver
+    let base_url = homeserver
+        .trim_end_matches('/')
+        .split("/_matrix")
+        .next()
+        .unwrap_or(&homeserver);
+
     let upload_url = format!(
         "{}/_matrix/media/v3/upload?filename={}",
-        homeserver.trim_end_matches('/'),
+        base_url,
         urlencoding::encode(&file_name)
     );
+    log::info!("Upload URL: {}", upload_url);
 
     // Create HTTP client
     let client = reqwest::Client::new();
