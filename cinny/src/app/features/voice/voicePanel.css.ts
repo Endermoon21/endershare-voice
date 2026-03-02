@@ -99,8 +99,27 @@ export const VoiceBannerControls = style({
 });
 
 // ===========================================
-// PING VISUALIZER
+// PING VISUALIZER / SIGNAL ICON
 // ===========================================
+export const SignalIconWrapper = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  padding: '4px',
+  borderRadius: '4px',
+  transition: `background-color 0.15s ${discordEase}`,
+  flexShrink: 0,
+  ':hover': {
+    backgroundColor: 'rgba(255, 251, 222, 0.08)',
+  },
+});
+
+export const SignalIcon = style({
+  display: 'block',
+});
+
+// Legacy ping dot (kept for compatibility)
 export const PingDot = style({
   width: '10px',
   height: '10px',
