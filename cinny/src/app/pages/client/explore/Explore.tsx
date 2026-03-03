@@ -168,7 +168,7 @@ export function Explore() {
   const selectedServer = useExploreServer();
 
   return (
-    <PageNav>
+    <PageNav showVoicePanel>
       <PageNavHeader>
         <Box grow="Yes" gap="300">
           <Box grow="Yes">

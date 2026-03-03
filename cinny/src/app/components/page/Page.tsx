@@ -45,10 +45,12 @@ export function PageRoot({ nav, children }: PageRootProps) {
 
 type ClientDrawerLayoutProps = {
   children: ReactNode;
+  showVoicePanel?: boolean;
 };
 export function PageNav({
   size,
   children,
+  showVoicePanel = false,
 }: ClientDrawerLayoutProps & css.PageNavVariants) {
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
@@ -122,7 +124,7 @@ export function PageNav({
       <Box grow="Yes" direction="Column" style={{ minHeight: 0, overflow: "hidden" }}>
         {children}
       </Box>
-      <VoicePanel />
+      {showVoicePanel && <VoicePanel />}
       {/* Resize handle */}
       {!isMobile && (
         <div

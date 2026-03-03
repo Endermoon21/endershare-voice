@@ -203,7 +203,7 @@ export function Direct() {
   );
 
   return (
-    <PageNav>
+    <PageNav showVoicePanel>
       <DirectHeader />
       {noRoomToDisplay ? (
         <DirectEmpty />

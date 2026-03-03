@@ -233,7 +233,7 @@ export function Home() {
   );
 
   return (
-    <PageNav>
+    <PageNav showVoicePanel>
       <HomeHeader />
       {noRoomToDisplay ? (
         <HomeEmpty />
