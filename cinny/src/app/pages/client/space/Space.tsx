@@ -2,11 +2,10 @@ import React, {
   MouseEventHandler,
   forwardRef,
   useCallback,
-  useMemo,
   useRef,
   useState,
 } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import {
   Avatar,
   Box,
@@ -25,47 +24,37 @@ import {
   config,
   toRem,
 } from 'folds';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { JoinRule, Room } from 'matrix-js-sdk';
 import { RoomJoinRulesEventContent } from 'matrix-js-sdk/lib/types';
 import FocusTrap from 'focus-trap-react';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { mDirectAtom } from '../../../state/mDirectList';
 import {
   NavCategory,
-  NavCategoryHeader,
   NavItem,
   NavItemContent,
   NavLink,
 } from '../../../components/nav';
 import { getSpaceLobbyPath, getSpaceRoomPath, getSpaceSearchPath } from '../../pathUtils';
 import { getCanonicalAliasOrRoomId, isRoomAlias } from '../../../utils/matrix';
-import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
 import {
   useSpaceLobbySelected,
   useSpaceSearchSelected,
 } from '../../../hooks/router/useSelectedSpace';
 import { useSpace } from '../../../hooks/useSpace';
-import { VirtualTile } from '../../../components/virtualizer';
-import { RoomNavCategoryButton, RoomNavItem } from '../../../features/room-nav';
-import { VoiceChannelSection, useLiveKitContext } from '../../../features/voice';
-import { makeNavCategoryId } from '../../../state/closedNavCategories';
-import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
-import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
+import { useLiveKitContext } from '../../../features/voice';
+import { UnifiedChannelList } from '../../../features/channels';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { useRoomName } from '../../../hooks/useRoomMeta';
-import { useSpaceJoinedHierarchy } from '../../../hooks/useSpaceHierarchy';
 import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
 import { usePowerLevels } from '../../../hooks/usePowerLevels';
-import { useRecursiveChildScopeFactory, useSpaceChildren } from '../../../state/hooks/roomList';
+import { useSpaceChildren } from '../../../state/hooks/roomList';
 import { roomToParentsAtom } from '../../../state/room/roomToParents';
 import { markAsRead } from '../../../utils/notifications';
 import { useRoomsUnread } from '../../../state/hooks/unread';
 import { UseStateProvider } from '../../../components/UseStateProvider';
 import { LeaveSpacePrompt } from '../../../components/leave-space-prompt';
 import { copyToClipboard } from '../../../utils/dom';
-import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCategories';
 import { useStateEvent } from '../../../hooks/useStateEvent';
 import { Membership, StateEvent } from '../../../../types/matrix/room';
 import { stopPropagation } from '../../../utils/keyboard';
@@ -73,10 +62,6 @@ import { getMatrixToRoom } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
-import {
-  getRoomNotificationMode,
-  useRoomsNotificationPreferencesContext,
-} from '../../../hooks/useRoomsNotificationPreferences';
 import { useOpenSpaceSettings } from '../../../state/hooks/spaceSettings';
 import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
@@ -85,6 +70,7 @@ import { ContainerColor } from '../../../styles/ContainerColor.css';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { BreakWord } from '../../../styles/Text.css';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
+import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 
 type SpaceMenuProps = {
   room: Room;
@@ -381,61 +367,12 @@ export function Space() {
   useNavToActivePathMapper(space.roomId);
   const spaceIdOrAlias = getCanonicalAliasOrRoomId(mx, space.roomId);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mDirects = useAtomValue(mDirectAtom);
-  const roomToUnread = useAtomValue(roomToUnreadAtom);
-  const allRooms = useAtomValue(allRoomsAtom);
-  const allJoinedRooms = useMemo(() => new Set(allRooms), [allRooms]);
-  const notificationPreferences = useRoomsNotificationPreferencesContext();
 
   const tombstoneEvent = useStateEvent(space, StateEvent.RoomTombstone);
 
-  const selectedRoomId = useSelectedRoom();
   const { showVoiceView, setShowVoiceView } = useLiveKitContext();
   const lobbySelected = useSpaceLobbySelected(spaceIdOrAlias);
   const searchSelected = useSpaceSearchSelected(spaceIdOrAlias);
-
-  const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
-
-  const getRoom = useCallback(
-    (rId: string) => {
-      if (allJoinedRooms.has(rId)) {
-        return mx.getRoom(rId) ?? undefined;
-      }
-      return undefined;
-    },
-    [mx, allJoinedRooms]
-  );
-
-  const hierarchy = useSpaceJoinedHierarchy(
-    space.roomId,
-    getRoom,
-    useCallback(
-      (parentId, roomId) => {
-        if (!closedCategories.has(makeNavCategoryId(space.roomId, parentId))) {
-          return false;
-        }
-        const showRoom = roomToUnread.has(roomId) || roomId === selectedRoomId;
-        if (showRoom) return false;
-        return true;
-      },
-      [space.roomId, closedCategories, roomToUnread, selectedRoomId]
-    ),
-    useCallback(
-      (sId) => closedCategories.has(makeNavCategoryId(space.roomId, sId)),
-      [closedCategories, space.roomId]
-    )
-  );
-
-  const virtualizer = useVirtualizer({
-    count: hierarchy.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 0,
-    overscan: 10,
-  });
-
-  const handleCategoryClick = useCategoryHandler(setClosedCategories, (categoryId) =>
-    closedCategories.has(categoryId)
-  );
 
   const getToLink = (roomId: string) =>
     getSpaceRoomPath(spaceIdOrAlias, getCanonicalAliasOrRoomId(mx, roomId));
@@ -485,56 +422,11 @@ export function Space() {
               </NavLink>
             </NavItem>
           </NavCategory>
-          <VoiceChannelSection />
-          <NavCategory
-            style={{
-              height: virtualizer.getTotalSize(),
-              position: 'relative',
-            }}
-          >
-            {virtualizer.getVirtualItems().map((vItem) => {
-              const { roomId } = hierarchy[vItem.index] ?? {};
-              const room = mx.getRoom(roomId);
-              if (!room) return null;
-
-              if (room.isSpaceRoom()) {
-                const categoryId = makeNavCategoryId(space.roomId, roomId);
-
-                return (
-                  <VirtualTile
-                    virtualItem={vItem}
-                    key={vItem.index}
-                    ref={virtualizer.measureElement}
-                  >
-                    <div style={{ paddingTop: vItem.index === 0 ? undefined : config.space.S400 }}>
-                      <NavCategoryHeader>
-                        <RoomNavCategoryButton
-                          data-category-id={categoryId}
-                          onClick={handleCategoryClick}
-                          closed={closedCategories.has(categoryId)}
-                        >
-                          {roomId === space.roomId ? 'Rooms' : room?.name}
-                        </RoomNavCategoryButton>
-                      </NavCategoryHeader>
-                    </div>
-                  </VirtualTile>
-                );
-              }
-
-              return (
-                <VirtualTile virtualItem={vItem} key={vItem.index} ref={virtualizer.measureElement}>
-                  <RoomNavItem
-                    room={room}
-                    selected={!showVoiceView && selectedRoomId === roomId}
-                    showAvatar={mDirects.has(roomId)}
-                    direct={mDirects.has(roomId)}
-                    linkPath={getToLink(roomId)}
-                    notificationMode={getRoomNotificationMode(notificationPreferences, room.roomId)}
-                  />
-                </VirtualTile>
-              );
-            })}
-          </NavCategory>
+          <UnifiedChannelList
+            spaceId={space.roomId}
+            scrollRef={scrollRef}
+            getToLink={getToLink}
+          />
         </Box>
       </PageNavContent>
     </PageNav>

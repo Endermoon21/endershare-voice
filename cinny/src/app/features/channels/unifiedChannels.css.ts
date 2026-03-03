@@ -1,0 +1,292 @@
+import { style, keyframes } from '@vanilla-extract/css';
+import { color, config } from 'folds';
+
+// Drop indicator animation
+const dropPulse = keyframes({
+  '0%, 100%': { opacity: 1 },
+  '50%': { opacity: 0.6 },
+});
+
+// Category header
+export const CategoryHeader = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
+  padding: `${config.space.S100} ${config.space.S200}`,
+  cursor: 'pointer',
+  userSelect: 'none',
+  borderRadius: config.radii.R300,
+  transition: 'background 0.15s',
+
+  ':hover': {
+    backgroundColor: color.Surface.ContainerHover,
+  },
+});
+
+export const CategoryHeaderDragging = style({
+  opacity: 0.5,
+});
+
+export const CategoryChevron = style({
+  transition: 'transform 0.2s',
+  color: color.Surface.OnContainer,
+});
+
+export const CategoryChevronCollapsed = style({
+  transform: 'rotate(-90deg)',
+});
+
+export const CategoryName = style({
+  flex: 1,
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.02em',
+  color: color.Surface.OnContainer,
+});
+
+export const CategoryDragHandle = style({
+  opacity: 0,
+  cursor: 'grab',
+  color: color.Surface.OnContainer,
+  transition: 'opacity 0.15s',
+
+  selectors: {
+    [`${CategoryHeader}:hover &`]: {
+      opacity: 0.6,
+    },
+    [`${CategoryHeader}:hover &:hover`]: {
+      opacity: 1,
+    },
+  },
+});
+
+// Channel item
+export const ChannelItem = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  padding: `${config.space.S100} ${config.space.S200}`,
+  marginLeft: config.space.S200,
+  borderRadius: config.radii.R300,
+  cursor: 'pointer',
+  transition: 'background 0.15s',
+  position: 'relative',
+
+  ':hover': {
+    backgroundColor: color.Surface.ContainerHover,
+  },
+});
+
+export const ChannelItemSelected = style({
+  backgroundColor: color.Surface.ContainerActive,
+});
+
+export const ChannelItemDragging = style({
+  opacity: 0.5,
+});
+
+export const ChannelItemVoiceConnected = style({
+  backgroundColor: `${color.Success.Container}33`,
+  ':hover': {
+    backgroundColor: `${color.Success.Container}44`,
+  },
+});
+
+export const ChannelDragHandle = style({
+  opacity: 0,
+  cursor: 'grab',
+  color: color.Surface.OnContainer,
+  transition: 'opacity 0.15s',
+
+  selectors: {
+    [`${ChannelItem}:hover &`]: {
+      opacity: 0.6,
+    },
+    [`${ChannelItem}:hover &:hover`]: {
+      opacity: 1,
+    },
+  },
+});
+
+// Drop indicators
+export const DropIndicatorAbove = style({
+  position: 'absolute',
+  top: 0,
+  left: config.space.S200,
+  right: config.space.S200,
+  height: '2px',
+  backgroundColor: color.Primary.Main,
+  borderRadius: '1px',
+  animation: `${dropPulse} 1s ease-in-out infinite`,
+  pointerEvents: 'none',
+  zIndex: 10,
+});
+
+export const DropIndicatorBelow = style({
+  position: 'absolute',
+  bottom: 0,
+  left: config.space.S200,
+  right: config.space.S200,
+  height: '2px',
+  backgroundColor: color.Primary.Main,
+  borderRadius: '1px',
+  animation: `${dropPulse} 1s ease-in-out infinite`,
+  pointerEvents: 'none',
+  zIndex: 10,
+});
+
+export const DropIndicatorInto = style({
+  outline: `2px solid ${color.Primary.Main}`,
+  outlineOffset: '-2px',
+  borderRadius: config.radii.R300,
+});
+
+// Channel icons
+export const ChannelIcon = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '20px',
+  height: '20px',
+  color: color.Surface.OnContainer,
+  opacity: 0.7,
+});
+
+export const ChannelIconVoice = style({
+  opacity: 1,
+});
+
+export const ChannelIconVoiceConnected = style({
+  color: color.Success.Main,
+});
+
+export const ChannelName = style({
+  flex: 1,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  fontSize: config.fontSize.T300,
+  color: color.Surface.OnContainer,
+});
+
+export const ChannelNameVoiceConnected = style({
+  color: color.Success.Main,
+  fontWeight: 500,
+});
+
+// Voice channel participant count
+export const VoiceParticipantCount = style({
+  fontSize: config.fontSize.T200,
+  color: color.Surface.OnContainer,
+  opacity: 0.6,
+  marginLeft: 'auto',
+});
+
+// Participants list for voice channels
+export const ParticipantsList = style({
+  marginLeft: config.space.S400,
+  paddingLeft: config.space.S200,
+  borderLeft: `2px solid ${color.Surface.ContainerLine}`,
+});
+
+export const Participant = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  padding: `${config.space.S50} ${config.space.S200}`,
+  fontSize: config.fontSize.T200,
+  color: color.Surface.OnContainer,
+  opacity: 0.8,
+});
+
+export const ParticipantSpeaking = style({
+  opacity: 1,
+});
+
+export const ParticipantAvatar = style({
+  width: '18px',
+  height: '18px',
+  borderRadius: '50%',
+  backgroundColor: color.Surface.Container,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '10px',
+  fontWeight: 600,
+  color: color.Surface.OnContainer,
+  overflow: 'hidden',
+});
+
+export const ParticipantAvatarSpeaking = style({
+  boxShadow: `0 0 0 2px ${color.Success.Main}`,
+});
+
+export const ParticipantAvatarWithImage = style({
+  backgroundColor: 'transparent',
+});
+
+export const ParticipantName = style({
+  flex: 1,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+
+// Category actions
+export const CategoryActions = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
+  opacity: 0,
+  transition: 'opacity 0.15s',
+
+  selectors: {
+    [`${CategoryHeader}:hover &`]: {
+      opacity: 1,
+    },
+  },
+});
+
+// Channel actions
+export const ChannelActions = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S100,
+  opacity: 0,
+  transition: 'opacity 0.15s',
+  marginLeft: 'auto',
+
+  selectors: {
+    [`${ChannelItem}:hover &`]: {
+      opacity: 1,
+    },
+  },
+});
+
+// Call duration badge
+export const CallDuration = style({
+  fontSize: config.fontSize.T200,
+  color: color.Success.Main,
+  fontWeight: 500,
+  marginLeft: 'auto',
+});
+
+// Loading state
+export const LoadingContainer = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: config.space.S400,
+  color: color.Surface.OnContainer,
+  opacity: 0.6,
+});
+
+// Empty state
+export const EmptyState = style({
+  padding: config.space.S400,
+  textAlign: 'center',
+  color: color.Surface.OnContainer,
+  opacity: 0.6,
+  fontSize: config.fontSize.T300,
+});
