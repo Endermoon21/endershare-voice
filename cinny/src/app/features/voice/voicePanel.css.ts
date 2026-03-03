@@ -202,15 +202,14 @@ export const UserBanner = style({
   display: 'flex',
   flexDirection: 'column',
   backgroundColor: butter.background,
-  width: '100%',
 });
 
 // Profile row - clickable area with user info
 export const UserInfo = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '10px',
-  padding: '10px 12px',
+  gap: '8px',
+  padding: '8px',
   cursor: 'pointer',
   transition: `background-color 0.15s ${discordEase}`,
   ':hover': {
@@ -301,7 +300,7 @@ export const UserControls = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
-  padding: '6px 8px',
+  padding: '8px',
   borderTop: `1px solid ${butter.border}`,
   gap: '4px',
 });
