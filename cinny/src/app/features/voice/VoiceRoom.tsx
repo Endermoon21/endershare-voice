@@ -436,29 +436,38 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
 
   // Attach video (camera or stream)
   useEffect(() => {
-    if (!videoContainerRef.current) return;
+    const container = videoContainerRef.current;
+    if (!container || !hasVideo) return;
+
+    // Clear container first
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
 
     if (isStreamTile && streamVideoElement) {
-      videoContainerRef.current.innerHTML = "";
       streamVideoElement.style.width = "100%";
       streamVideoElement.style.height = "100%";
       streamVideoElement.style.objectFit = "contain";
       streamVideoElement.style.borderRadius = "8px";
-      videoContainerRef.current.appendChild(streamVideoElement);
+      container.appendChild(streamVideoElement);
     } else if (participant.isCameraEnabled) {
       const videoEl = getCameraElement(participant.identity);
       if (videoEl) {
-        videoContainerRef.current.innerHTML = "";
         videoEl.style.width = "100%";
         videoEl.style.height = "100%";
         videoEl.style.objectFit = "cover";
         videoEl.style.borderRadius = "8px";
-        videoContainerRef.current.appendChild(videoEl);
+        container.appendChild(videoEl);
       }
-    } else {
-      videoContainerRef.current.innerHTML = "";
     }
-  }, [participant.isCameraEnabled, participant.identity, getCameraElement, isStreamTile, streamVideoElement]);
+
+    // Cleanup when component unmounts or dependencies change
+    return () => {
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
+    };
+  }, [hasVideo, participant.isCameraEnabled, participant.identity, getCameraElement, isStreamTile, streamVideoElement]);
 
   const handleClick = () => {
     if (!participant.isLocal && !isStreamTile) setShowPopup(true);
@@ -517,11 +526,11 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
         onMouseLeave={() => setShowControls(false)}
       >
         {hasVideo ? (
-          // Show video (camera or stream)
-          <div ref={videoContainerRef} className={css.TileVideoContainer} />
+          // Show video (camera or stream) - key forces remount when switching
+          <div key="video" ref={videoContainerRef} className={css.TileVideoContainer} />
         ) : (
-          // Show avatar
-          <div className={css.TileAvatarContainer}>
+          // Show avatar - key forces remount when switching
+          <div key="avatar" className={css.TileAvatarContainer}>
             <div className={classNames(css.TileAvatar, {
               [css.TileAvatarFallback]: !avatarUrl,
             })}>
