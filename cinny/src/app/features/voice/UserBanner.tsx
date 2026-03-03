@@ -67,11 +67,7 @@ const VoiceConnectedIcon = () => (
   </svg>
 );
 
-interface UserBannerProps {
-  onSettingsChange?: (isOpen: boolean) => void;
-}
-
-export function UserBanner({ onSettingsChange }: UserBannerProps) {
+export function UserBanner() {
   const mx = useMatrixClient();
   const {
     isConnected,
@@ -121,11 +117,11 @@ export function UserBanner({ onSettingsChange }: UserBannerProps) {
   }, []);
 
   const handleOpenSettings = useCallback(() => {
-    setShowSettings(true); onSettingsChange?.(true);
+    setShowSettings(true);
   }, []);
 
   const handleCloseSettings = useCallback(() => {
-    setShowSettings(false); onSettingsChange?.(false);
+    setShowSettings(false);
   }, []);
 
   return (

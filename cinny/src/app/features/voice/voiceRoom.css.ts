@@ -113,15 +113,20 @@ export const TileAvatarContainer = style({
   left: 0,
   right: 0,
   bottom: 0,
+  width: "100%",
+  height: "100%",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  pointerEvents: "none", // Allow clicks to pass through to tile
 });
 
 // Discord-style: small centered avatar with ring when speaking
 export const TileAvatar = style({
   width: "80px",
   height: "80px",
+  minWidth: "80px",
+  minHeight: "80px",
   borderRadius: "50%",
   backgroundColor: "transparent",
   display: "flex",
@@ -134,6 +139,8 @@ export const TileAvatar = style({
   boxSizing: "border-box",
   overflow: "hidden",
   transition: `border-color 0.15s ${discordEase}`,
+  pointerEvents: "auto", // Re-enable clicks on the avatar
+  flexShrink: 0,
 });
 
 // Fallback background for users without profile pictures

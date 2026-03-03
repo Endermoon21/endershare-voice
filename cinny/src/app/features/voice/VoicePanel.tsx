@@ -9,15 +9,14 @@ import * as css from './voicePanel.css';
 
 export function VoicePanel() {
   const { isConnected } = useLiveKitContext();
-  const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
 
-  // Check if any settings panel is open
+  // Check if room/space settings panel is open (these overlap with the panel)
   const roomSettingsState = useRoomSettingsState();
   const spaceSettingsState = useSpaceSettingsState();
-  const isAnySettingsOpen = !!roomSettingsState || !!spaceSettingsState || isUserSettingsOpen;
+  const isSettingsPanelOpen = !!roomSettingsState || !!spaceSettingsState;
 
-  // Hide entire panel when any settings/modal is open to avoid z-index conflicts
-  if (isAnySettingsOpen) {
+  // Hide entire panel when room/space settings are open to avoid z-index conflicts
+  if (isSettingsPanelOpen) {
     return null;
   }
 
@@ -29,7 +28,7 @@ export function VoicePanel() {
         {isConnected && <VoiceBanner />}
 
         {/* UserBanner */}
-        <UserBanner onSettingsChange={setIsUserSettingsOpen} />
+        <UserBanner />
       </Box>
     </Portal>
   );
