@@ -15,7 +15,7 @@ export const VoiceRoomContainer = style({
   height: "100%",
   width: "100%",
   minHeight: 0,
-  backgroundColor: "#1e1f22",
+  backgroundColor: color.Background.Container,
   animation: `${fadeSlideIn} 0.2s ${discordEaseOut}`,
   position: "relative",
 });
@@ -25,8 +25,8 @@ export const ChannelHeader = style({
   alignItems: "center",
   justifyContent: "space-between",
   padding: "12px 16px",
-  borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-  backgroundColor: "#2b2d31",
+  borderBottom: `1px solid ${color.Background.ContainerLine}`,
+  backgroundColor: color.Surface.Container,
   flexShrink: 0,
   minHeight: "48px",
 });
@@ -36,7 +36,7 @@ export const ChannelName = style({
   alignItems: "center",
   fontSize: "16px",
   fontWeight: 600,
-  color: "#f2f3f5",
+  color: color.Surface.OnContainer,
   gap: "8px",
 });
 
@@ -49,7 +49,7 @@ export const MainArea = style({
   padding: "16px",
   overflow: "auto",
   minHeight: 0,
-  backgroundColor: "#1e1f22",
+  backgroundColor: color.Background.Container,
   gap: "8px",
 });
 
@@ -65,10 +65,10 @@ export const QualityBadge = style({
   letterSpacing: "0.02em",
 });
 
-export const QualityExcellent = style({ backgroundColor: "rgba(35, 165, 90, 0.2)", color: "#23a55a" });
-export const QualityGood = style({ backgroundColor: "rgba(35, 165, 90, 0.2)", color: "#23a55a" });
-export const QualityPoor = style({ backgroundColor: "rgba(250, 166, 26, 0.2)", color: "#f0b232" });
-export const QualityBad = style({ backgroundColor: "rgba(242, 63, 67, 0.2)", color: "#f23f43" });
+export const QualityExcellent = style({ backgroundColor: color.Success.Container, color: color.Success.OnContainer });
+export const QualityGood = style({ backgroundColor: color.Success.Container, color: color.Success.OnContainer });
+export const QualityPoor = style({ backgroundColor: color.Warning.Container, color: color.Warning.OnContainer });
+export const QualityBad = style({ backgroundColor: color.Critical.Container, color: color.Critical.OnContainer });
 
 // Discord-style: vertical stack of landscape tiles
 export const ParticipantGrid = style({
@@ -88,7 +88,7 @@ export const ParticipantTile = style({
   borderRadius: "8px",
   width: "100%",
   aspectRatio: "16 / 9",
-  backgroundColor: "#5865f2", // Default Discord blurple, will be overridden per-user
+  backgroundColor: color.Primary.Container, // Default accent, will be overridden per-user
   transition: `background-color 0.15s ${discordEase}, box-shadow 0.15s ${discordEase}`,
   cursor: "default",
   overflow: "hidden",
@@ -100,8 +100,8 @@ export const ParticipantTileLarge = style({});
 
 // Speaking state - green border around entire tile
 export const ParticipantTileSpeaking = style({
-  borderColor: "#23a55a",
-  boxShadow: "0 0 0 1px #23a55a, 0 0 12px rgba(35, 165, 90, 0.4)",
+  borderColor: color.Success.Main,
+  boxShadow: `0 0 0 1px ${color.Success.Main}, 0 0 12px ${color.Success.Container}`,
 });
 
 // Legacy - keep for compatibility
@@ -145,7 +145,7 @@ export const TileAvatar = style({
   alignItems: "center",
   justifyContent: "center",
   fontWeight: 600,
-  color: "#fff",
+  color: color.Surface.OnContainer,
   fontSize: "32px",
   border: "4px solid transparent",
   boxSizing: "border-box",
@@ -157,12 +157,12 @@ export const TileAvatar = style({
 
 // Fallback background for users without profile pictures
 export const TileAvatarFallback = style({
-  backgroundColor: "#5865f2",
+  backgroundColor: color.Primary.Main,
 });
 
 // Speaking indicator - colored ring around avatar
 export const TileAvatarSpeaking = style({
-  borderColor: "#23a55a",
+  borderColor: color.Success.Main,
 });
 
 export const TileAvatarLetter = style({});
@@ -188,10 +188,10 @@ export const TileStatusOverlay = style({
   boxSizing: "content-box",
 });
 
-export const TileStatusMuted = style({ color: "#f23f43" });
-export const TileStatusDeafened = style({ color: "#f23f43" });
-export const TileStatusScreenShare = style({ color: "#23a55a", bottom: "auto", top: "-2px", right: "-2px" });
-export const TileStatusCamera = style({ color: "#23a55a" });
+export const TileStatusMuted = style({ color: color.Critical.Main });
+export const TileStatusDeafened = style({ color: color.Critical.Main });
+export const TileStatusScreenShare = style({ color: color.Success.Main, bottom: "auto", top: "-2px", right: "-2px" });
+export const TileStatusCamera = style({ color: color.Success.Main });
 
 // Discord-style: name in bottom-left with dark pill
 export const TileInfo = style({
@@ -209,7 +209,7 @@ export const TileInfo = style({
 
 export const TileName = style({
   fontWeight: 600,
-  color: "#fff",
+  color: color.Surface.OnContainer,
   fontSize: "14px",
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -219,12 +219,12 @@ export const TileName = style({
 
 export const TileYou = style({
   fontSize: "12px",
-  color: "rgba(255,255,255,0.7)",
+  color: color.SurfaceVariant.OnContainer,
 });
 
 export const ScreenShareSection = style({
   position: "relative",
-  backgroundColor: "#111214",
+  backgroundColor: color.Background.Container,
   borderRadius: "8px",
   overflow: "hidden",
   width: "100%",
@@ -252,7 +252,7 @@ export const ScreenShareLabel = style({
   top: "12px",
   left: "12px",
   backgroundColor: "rgba(0, 0, 0, 0.75)",
-  color: "#fff",
+  color: color.Surface.OnContainer,
   padding: "6px 12px",
   borderRadius: "4px",
   fontSize: "13px",
@@ -278,7 +278,7 @@ export const ControlBar = style({
   alignItems: "center",
   gap: "8px",
   padding: "16px",
-  backgroundColor: "#232428",
+  backgroundColor: color.Surface.Container,
   flexShrink: 0,
 });
 
@@ -292,36 +292,36 @@ export const ControlBtn = style({
   height: "52px",
   borderRadius: "50%",
   border: "none",
-  backgroundColor: "#2b2d31",
-  color: "#b5bac1",
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
   cursor: "pointer",
   transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}, transform 0.1s ${discordEase}`,
-  ":hover": { backgroundColor: "#36383f", color: "#dbdee1" },
+  ":hover": { backgroundColor: color.SurfaceVariant.ContainerHover, color: color.Surface.OnContainer },
   ":active": { transform: "scale(0.95)" },
 });
 
 export const ControlBtnActive = style({
-  backgroundColor: "#2b2d31",
-  color: "#f23f43",
-  ":hover": { backgroundColor: "#36383f", color: "#f23f43" },
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.Critical.Main,
+  ":hover": { backgroundColor: color.SurfaceVariant.ContainerHover, color: color.Critical.Main },
 });
 
 // Green active state for streaming
 export const ControlBtnGreen = style({
-  backgroundColor: "rgba(35, 165, 90, 0.2)",
-  color: "#23a55a",
-  boxShadow: "0 0 8px rgba(35, 165, 90, 0.4)",
+  backgroundColor: color.Success.Container,
+  color: color.Success.Main,
+  boxShadow: `0 0 8px ${color.Success.Container}`,
   ":hover": {
-    backgroundColor: "rgba(35, 165, 90, 0.3)",
-    color: "#23a55a",
-    boxShadow: "0 0 12px rgba(35, 165, 90, 0.5)",
+    backgroundColor: color.Success.ContainerHover,
+    color: color.Success.Main,
+    boxShadow: `0 0 12px ${color.Success.Container}`,
   },
 });
 
 export const ControlBtnScreen = style({
-  backgroundColor: "#248046",
-  color: "#fff",
-  ":hover": { backgroundColor: "#1a6334", color: "#fff" },
+  backgroundColor: color.Success.Main,
+  color: color.Success.OnMain,
+  ":hover": { backgroundColor: color.Success.MainHover, color: color.Success.OnMain },
 });
 
 export const DisconnectBtn = style({
@@ -332,12 +332,12 @@ export const DisconnectBtn = style({
   height: "52px",
   borderRadius: "50%",
   border: "none",
-  backgroundColor: "#ed4245",
-  color: "#fff",
+  backgroundColor: color.Critical.Main,
+  color: color.Critical.OnMain,
   cursor: "pointer",
   transition: `background-color 0.15s ${discordEase}, transform 0.1s ${discordEase}`,
   marginLeft: "16px",
-  ":hover": { backgroundColor: "#c93b3e" },
+  ":hover": { backgroundColor: color.Critical.MainHover },
   ":active": { transform: "scale(0.95)" },
 });
 
@@ -347,7 +347,7 @@ export const EmptyState = style({
   alignItems: "center",
   justifyContent: "center",
   gap: "16px",
-  color: "#949ba4",
+  color: color.SurfaceVariant.OnContainer,
   padding: "32px",
   flex: 1,
 });
@@ -360,13 +360,13 @@ export const ParticipantPopup = style({
   position: "absolute",
   bottom: "60px",
   left: "12px",
-  backgroundColor: "#111214",
+  backgroundColor: color.Surface.Container,
   borderRadius: "8px",
   padding: "12px",
   minWidth: "200px",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
   zIndex: 10,
-  border: "1px solid rgba(255, 255, 255, 0.1)",
+  border: `1px solid ${color.Surface.ContainerLine}`,
 });
 
 export const PopupHeader = style({
@@ -375,27 +375,27 @@ export const PopupHeader = style({
   gap: "8px",
   marginBottom: "12px",
   paddingBottom: "8px",
-  borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+  borderBottom: `1px solid ${color.Surface.ContainerLine}`,
 });
 
 export const PopupAvatar = style({
   width: "32px",
   height: "32px",
   borderRadius: "50%",
-  backgroundColor: "#5865f2",
+  backgroundColor: color.Primary.Main,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: "14px",
   fontWeight: 600,
-  color: "#fff",
+  color: color.Primary.OnMain,
   overflow: "hidden",
 });
 
 export const PopupName = style({
   fontSize: "14px",
   fontWeight: 600,
-  color: "#f2f3f5",
+  color: color.Surface.OnContainer,
   flex: 1,
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -413,7 +413,7 @@ export const VolumeLabel = style({
   justifyContent: "space-between",
   alignItems: "center",
   fontSize: "12px",
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   textTransform: "uppercase",
   fontWeight: 600,
   letterSpacing: "0.02em",
@@ -430,7 +430,7 @@ export const VolumeSlider = style({
   height: "4px",
   WebkitAppearance: "none",
   appearance: "none",
-  backgroundColor: "#4e5058",
+  backgroundColor: color.SurfaceVariant.Container,
   borderRadius: "2px",
   outline: "none",
   cursor: "pointer",
@@ -440,7 +440,7 @@ export const VolumeSlider = style({
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    backgroundColor: "#fff",
+    backgroundColor: color.Surface.OnContainer,
     cursor: "pointer",
     border: "none",
   },
@@ -448,20 +448,20 @@ export const VolumeSlider = style({
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    backgroundColor: "#fff",
+    backgroundColor: color.Surface.OnContainer,
     cursor: "pointer",
     border: "none",
   },
 });
 
 export const VolumeIcon = style({
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   flexShrink: 0,
 });
 
 export const VolumeValue = style({
   fontSize: "12px",
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   minWidth: "36px",
   textAlign: "right",
 });
@@ -476,20 +476,20 @@ export const LocalMuteBtn = style({
   backgroundColor: "transparent",
   border: "none",
   borderRadius: "4px",
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   fontSize: "13px",
   cursor: "pointer",
   transition: "background-color 0.15s ease, color 0.15s ease",
   ":hover": {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    color: "#f2f3f5",
+    backgroundColor: color.Surface.ContainerHover,
+    color: color.Surface.OnContainer,
   },
 });
 
 export const LocalMuteBtnActive = style({
-  color: "#f23f43",
+  color: color.Critical.Main,
   ":hover": {
-    color: "#f23f43",
+    color: color.Critical.Main,
   },
 });
 
@@ -570,25 +570,25 @@ export const StreamerAvatar = style({
   width: "24px",
   height: "24px",
   borderRadius: "50%",
-  backgroundColor: "#5865f2",
+  backgroundColor: color.Primary.Main,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: "12px",
   fontWeight: 600,
-  color: "#fff",
+  color: color.Primary.OnMain,
   overflow: "hidden",
 });
 
 export const StreamerName = style({
   fontSize: "13px",
   fontWeight: 500,
-  color: "#fff",
+  color: color.Surface.OnContainer,
 });
 
 export const LiveBadge = style({
-  backgroundColor: "#ed4245",
-  color: "#fff",
+  backgroundColor: color.Critical.Main,
+  color: color.Critical.OnMain,
   padding: "2px 6px",
   borderRadius: "3px",
   fontSize: "11px",
@@ -608,7 +608,7 @@ export const StreamControlBtn = style({
   borderRadius: "4px",
   border: "none",
   backgroundColor: "rgba(0, 0, 0, 0.6)",
-  color: "#fff",
+  color: color.Surface.OnContainer,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -623,7 +623,7 @@ export const ViewerCount = style({
   display: "flex",
   alignItems: "center",
   gap: "6px",
-  color: "#fff",
+  color: color.Surface.OnContainer,
   fontSize: "13px",
   fontWeight: 500,
   backgroundColor: "rgba(0, 0, 0, 0.6)",
@@ -645,20 +645,20 @@ export const ViewerThumb = style({
   width: "48px",
   height: "48px",
   borderRadius: "8px",
-  backgroundColor: "#5865f2",
+  backgroundColor: color.Primary.Main,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: "18px",
   fontWeight: 600,
-  color: "#fff",
+  color: color.Primary.OnMain,
   overflow: "hidden",
   border: "2px solid transparent",
   transition: "border-color 0.15s ease",
 });
 
 export const ViewerThumbSpeaking = style({
-  borderColor: "#23a55a",
+  borderColor: color.Success.Main,
 });
 
 export const ViewerThumbMuted = style({
@@ -670,9 +670,9 @@ export const ViewerThumbMuted = style({
     right: "-2px",
     width: "14px",
     height: "14px",
-    backgroundColor: "#ed4245",
+    backgroundColor: color.Critical.Main,
     borderRadius: "50%",
-    border: "2px solid #111214",
+    border: `2px solid ${color.Background.Container}`,
   },
 });
 
@@ -682,15 +682,15 @@ export const StreamLoading = style({
   alignItems: "center",
   justifyContent: "center",
   gap: "16px",
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   flex: 1,
 });
 
 export const StreamLoadingSpinner = style({
   width: "48px",
   height: "48px",
-  border: "3px solid rgba(255, 255, 255, 0.1)",
-  borderTopColor: "#5865f2",
+  border: `3px solid ${color.Surface.ContainerLine}`,
+  borderTopColor: color.Primary.Main,
   borderRadius: "50%",
   animation: "spin 1s linear infinite",
   "@keyframes spin": {
@@ -704,19 +704,19 @@ export const DeviceMenuWrapper = style({
   bottom: "70px",
   left: "50%",
   transform: "translateX(-50%)",
-  backgroundColor: "#111214",
+  backgroundColor: color.Surface.Container,
   borderRadius: "8px",
   minWidth: "280px",
   maxWidth: "350px",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
   zIndex: 5,
-  border: "1px solid rgba(255, 255, 255, 0.1)",
+  border: `1px solid ${color.Surface.ContainerLine}`,
   overflow: "hidden",
   animation: `${fadeSlideIn} 0.15s ${discordEaseOut}`,
 });
 
 export const DeviceSection = style({
-  borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+  borderBottom: `1px solid ${color.Surface.ContainerLine}`,
   ":last-child": {
     borderBottom: "none",
   },
@@ -730,14 +730,14 @@ export const DeviceSectionHeader = style({
   cursor: "pointer",
   transition: "background-color 0.15s ease",
   ":hover": {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: color.Surface.ContainerHover,
   },
 });
 
 export const DeviceSectionLabel = style({
   fontSize: "11px",
   fontWeight: 700,
-  color: "#949ba4",
+  color: color.SurfaceVariant.OnContainer,
   textTransform: "uppercase",
   letterSpacing: "0.02em",
 });
@@ -753,7 +753,7 @@ export const DeviceSectionCurrent = style({
 
 export const DeviceCurrentName = style({
   fontSize: "13px",
-  color: "#dbdee1",
+  color: color.Surface.OnContainer,
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -761,7 +761,7 @@ export const DeviceCurrentName = style({
 });
 
 export const DeviceChevron = style({
-  color: "#949ba4",
+  color: color.SurfaceVariant.OnContainer,
   transition: "transform 0.15s ease",
   flexShrink: 0,
 });
@@ -771,7 +771,7 @@ export const DeviceChevronOpen = style({
 });
 
 export const DeviceList = style({
-  backgroundColor: "rgba(0, 0, 0, 0.2)",
+  backgroundColor: color.Background.Container,
   maxHeight: "0",
   overflow: "hidden",
   transition: "max-height 0.2s ease",
@@ -789,18 +789,18 @@ export const DeviceOption = style({
   padding: "8px 12px 8px 24px",
   cursor: "pointer",
   fontSize: "13px",
-  color: "#b5bac1",
+  color: color.SurfaceVariant.OnContainer,
   transition: "background-color 0.1s ease, color 0.1s ease",
   ":hover": {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-    color: "#f2f3f5",
+    backgroundColor: color.Surface.ContainerHover,
+    color: color.Surface.OnContainer,
   },
 });
 
 export const DeviceOptionActive = style({
-  color: "#23a55a",
+  color: color.Success.Main,
   ":hover": {
-    color: "#23a55a",
+    color: color.Success.Main,
   },
 });
 
@@ -831,29 +831,34 @@ export const ControlBtnMain = style({
   height: "48px",
   borderRadius: "24px 0 0 24px",
   border: "none",
-  backgroundColor: "#2b2d31",
-  color: "#b5bac1",
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
   cursor: "pointer",
   transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}, transform 0.1s ${discordEase}`,
-  ":hover": { backgroundColor: "#36383f", color: "#dbdee1" },
+  ":hover": { backgroundColor: color.SurfaceVariant.ContainerHover, color: color.Surface.OnContainer },
   ":active": { transform: "scale(0.95)" },
 });
 
 export const ControlBtnMainActive = style({
-  backgroundColor: "#2b2d31",
-  color: "#f23f43",
-  ":hover": { backgroundColor: "#36383f", color: "#f23f43" },
+  backgroundColor: color.Critical.Container,
+  color: color.Critical.Main,
+  boxShadow: `0 0 8px ${color.Critical.Container}`,
+  ":hover": {
+    backgroundColor: color.Critical.ContainerHover,
+    color: color.Critical.Main,
+    boxShadow: `0 0 12px ${color.Critical.Container}`,
+  },
 });
 
 // Green active state for camera enabled
 export const ControlBtnMainGreen = style({
-  backgroundColor: "rgba(35, 165, 90, 0.2)",
-  color: "#23a55a",
-  boxShadow: "0 0 8px rgba(35, 165, 90, 0.4)",
+  backgroundColor: color.Success.Container,
+  color: color.Success.Main,
+  boxShadow: `0 0 8px ${color.Success.Container}`,
   ":hover": {
-    backgroundColor: "rgba(35, 165, 90, 0.3)",
-    color: "#23a55a",
-    boxShadow: "0 0 12px rgba(35, 165, 90, 0.5)",
+    backgroundColor: color.Success.ContainerHover,
+    color: color.Success.Main,
+    boxShadow: `0 0 12px ${color.Success.Container}`,
   },
 });
 
@@ -865,12 +870,25 @@ export const ControlBtnDropdownArrow = style({
   height: "48px",
   borderRadius: "0 24px 24px 0",
   border: "none",
-  borderLeft: "1px solid rgba(255, 255, 255, 0.1)",
-  backgroundColor: "#2b2d31",
-  color: "#b5bac1",
+  borderLeft: `1px solid ${color.Surface.ContainerLine}`,
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
   cursor: "pointer",
-  transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}`,
-  ":hover": { backgroundColor: "#36383f", color: "#dbdee1" },
+  transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}, box-shadow 0.15s ${discordEase}`,
+  ":hover": { backgroundColor: color.SurfaceVariant.ContainerHover, color: color.Surface.OnContainer },
+});
+
+// Red active state for dropdown arrow when muted
+export const ControlBtnDropdownArrowMuted = style({
+  backgroundColor: color.Critical.Container,
+  color: color.Critical.Main,
+  borderLeft: `1px solid ${color.Critical.ContainerLine}`,
+  boxShadow: `0 0 8px ${color.Critical.Container}`,
+  ":hover": {
+    backgroundColor: color.Critical.ContainerHover,
+    color: color.Critical.Main,
+    boxShadow: `0 0 12px ${color.Critical.Container}`,
+  },
 });
 
 // Video tile controls overlay (fullscreen, pip, popout)
@@ -889,7 +907,7 @@ export const TileControlBtn = style({
   borderRadius: "4px",
   border: "none",
   backgroundColor: "rgba(0, 0, 0, 0.6)",
-  color: "#fff",
+  color: color.Surface.OnContainer,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -916,27 +934,27 @@ export const TileActivityBadges = style({
 
 // Small LIVE badge for stream tiles
 export const LiveBadgeSmall = style({
-  backgroundColor: "#ed4245",
-  color: "#fff",
+  backgroundColor: color.Critical.Main,
+  color: color.Critical.OnMain,
   padding: "3px 8px",
   borderRadius: "4px",
   fontSize: "11px",
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.03em",
-  boxShadow: "0 2px 8px rgba(237, 66, 69, 0.4)",
+  boxShadow: `0 2px 8px ${color.Critical.Container}`,
 });
 
 // Camera badge for users with camera on
 export const CameraBadge = style({
-  backgroundColor: "rgba(35, 165, 90, 0.9)",
-  color: "#fff",
+  backgroundColor: color.Success.Main,
+  color: color.Success.OnMain,
   padding: "4px 6px",
   borderRadius: "4px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  boxShadow: "0 2px 8px rgba(35, 165, 90, 0.4)",
+  boxShadow: `0 2px 8px ${color.Success.Container}`,
 });
 
 // Stream tile style (slightly different from regular tiles)

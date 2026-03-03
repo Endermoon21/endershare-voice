@@ -13,6 +13,7 @@ import {
 } from "livekit-client";
 
 import { useNoiseFilter } from "./useNoiseFilter";
+import { isNativeStreamingAvailable, getNativeStreamStatus } from "./nativeStreaming";
 const LIVEKIT_URL = "wss://livekit.endershare.org";
 const TOKEN_SERVER_URL = "https://token.endershare.org";
 const DIAGNOSTICS_URL = "https://token.endershare.org/diagnostics";
@@ -70,6 +71,7 @@ interface LiveKitContextValue {
   isNoiseFilterPending: boolean;
   setNoiseFilterEnabled: (enabled: boolean) => Promise<void>;
   isNoiseFilterSupported: boolean;
+  isNativeStreaming: boolean;
 }
 
 const LiveKitContext = createContext<LiveKitContextValue | null>(null);
@@ -87,7 +89,9 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const [showVoiceView, setShowVoiceView] = useState(false);
   const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
   const [isCameraEnabled, setIsCameraEnabled] = useState(false);
+  const [isNativeStreaming, setIsNativeStreaming] = useState(false);
   const roomRef = useRef<Room | null>(null);
+  const nativeStreamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [microphoneTrack, setMicrophoneTrack] = useState<any>(null);
   const noiseFilter = useNoiseFilter(microphoneTrack);
   const audioContainerRef = useRef<HTMLDivElement | null>(null);
@@ -247,7 +251,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isSpeaking: local.isSpeaking,
       isMuted: !local.isMicrophoneEnabled,
       isLocal: true,
-      isScreenSharing: local.isScreenShareEnabled,
+      isScreenSharing: local.isScreenShareEnabled || isNativeStreaming, // Include native streaming
       isCameraEnabled: local.isCameraEnabled,
       volume: 1
     });
@@ -264,7 +268,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       });
     });
     setParticipants(allParticipants);
-  }, []);
+  }, [isNativeStreaming]);
 
   const connect = useCallback(async (roomName: string, displayName: string) => {
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
@@ -415,8 +419,36 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [isConnected, updateParticipants]);
 
+  // Poll native streaming status when connected
+  useEffect(() => {
+    if (!isConnected || !isNativeStreamingAvailable()) return;
+
+    const checkNativeStreaming = async () => {
+      try {
+        const status = await getNativeStreamStatus();
+        const newIsStreaming = status.active;
+        if (newIsStreaming !== isNativeStreaming) {
+          setIsNativeStreaming(newIsStreaming);
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+
+    checkNativeStreaming();
+    nativeStreamingIntervalRef.current = setInterval(checkNativeStreaming, 2000);
+
+    return () => {
+      if (nativeStreamingIntervalRef.current) {
+        clearInterval(nativeStreamingIntervalRef.current);
+        nativeStreamingIntervalRef.current = null;
+      }
+    };
+  }, [isConnected, isNativeStreaming]);
+
   useEffect(() => { return () => {
     if (diagnosticsIntervalRef.current) clearInterval(diagnosticsIntervalRef.current);
+    if (nativeStreamingIntervalRef.current) clearInterval(nativeStreamingIntervalRef.current);
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} }
   }; }, []);
 
@@ -447,7 +479,8 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isNoiseFilterEnabled: noiseFilter.isNoiseFilterEnabled,
       isNoiseFilterPending: noiseFilter.isNoiseFilterPending,
       setNoiseFilterEnabled: noiseFilter.setNoiseFilterEnabled,
-      isNoiseFilterSupported: noiseFilter.isSupported
+      isNoiseFilterSupported: noiseFilter.isSupported,
+      isNativeStreaming,
     }}>
       {children}
     </LiveKitContext.Provider>

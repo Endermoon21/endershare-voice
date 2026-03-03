@@ -6,7 +6,6 @@ import { useLiveKitContext, VoiceParticipant } from "./LiveKitContext";
 import { useMatrixClient } from "../../hooks/useMatrixClient";
 import { useDeviceSelection } from "./useDeviceSelection";
 import { StreamingModal } from "./StreamingModal";
-import { getNativeStreamStatus, isNativeStreamingAvailable } from "./nativeStreaming";
 import * as css from "./voiceRoom.css";
 
 // Color palette for user tiles (Discord-like accent colors)
@@ -469,7 +468,8 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
     };
   }, [hasVideo, participant.isCameraEnabled, participant.identity, getCameraElement, isStreamTile, streamVideoElement]);
 
-  const handleClick = () => {
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default browser context menu
     if (!participant.isLocal && !isStreamTile) setShowPopup(true);
   };
 
@@ -521,7 +521,7 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
           [css.StreamTile]: isStreamTile,
         })}
         style={{ backgroundColor: hasVideo ? "#000" : tileColor }}
-        onClick={handleClick}
+        onContextMenu={handleContextMenu}
         onMouseEnter={() => hasVideo && setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
@@ -611,7 +611,8 @@ export function VoiceRoom() {
   const mx = useMatrixClient();
   const {
     currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, connectionQuality,
-    disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room
+    disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room,
+    isNativeStreaming
   } = useLiveKitContext();
 
   const deviceSelection = useDeviceSelection(room);
@@ -620,25 +621,11 @@ export function VoiceRoom() {
   const cameraButtonRef = useRef<HTMLDivElement>(null);
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
   const [showStreamModal, setShowStreamModal] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const [showCameraMenu, setShowCameraMenu] = useState(false);
 
-  // Check streaming status periodically
-  useEffect(() => {
-    if (!isNativeStreamingAvailable()) return;
-    const checkStatus = async () => {
-      try {
-        const status = await getNativeStreamStatus();
-        setIsStreaming(status.active);
-      } catch (e) {
-        // Ignore errors
-      }
-    };
-    checkStatus();
-    const interval = setInterval(checkStatus, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Use isNativeStreaming from context
+  const isStreaming = isNativeStreaming;
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -839,7 +826,7 @@ export function VoiceRoom() {
               {isMuted ? <MicOffIcon /> : <MicIcon />}
             </button>
             <button
-              className={css.ControlBtnDropdownArrow}
+              className={classNames(css.ControlBtnDropdownArrow, { [css.ControlBtnDropdownArrowMuted]: isMuted })}
               onClick={() => setShowDeviceMenu(!showDeviceMenu)}
               title="Select audio devices"
             >

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import classNames from "classnames";
 import { StreamingModal } from "./StreamingModal";
-import { isNativeStreamingAvailable, getNativeStreamStatus } from "./nativeStreaming";
 import { useLiveKitContext } from "./LiveKitContext";
 import * as css from "./voicePanel.css";
 
@@ -63,27 +62,11 @@ const ActivitiesIcon = () => (
 );
 
 export function MediaControlsRow() {
-  const { isCameraEnabled, toggleCamera } = useLiveKitContext();
+  const { isCameraEnabled, toggleCamera, isNativeStreaming } = useLiveKitContext();
   const [showStreamModal, setShowStreamModal] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
 
-  // Check streaming status periodically
-  React.useEffect(() => {
-    if (!isNativeStreamingAvailable()) return;
-
-    const checkStatus = async () => {
-      try {
-        const status = await getNativeStreamStatus();
-        setIsStreaming(status.active);
-      } catch (e) {
-        // Ignore errors
-      }
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Use isNativeStreaming from context
+  const isStreaming = isNativeStreaming;
 
   const handleVideoClick = (e: React.MouseEvent) => {
     e.stopPropagation();
