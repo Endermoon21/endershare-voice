@@ -83,20 +83,32 @@ export function MediaControlsRow() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleCamera();
+  };
+
+  const handleStreamClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowStreamModal(true);
+  };
+
   return (
     <>
       <div className={css.MediaControlsRow}>
         <button
           className={classNames(css.MediaBtn, { [css.MediaBtnActive]: isCameraEnabled })}
-          onClick={toggleCamera}
+          onClick={handleVideoClick}
           title={isCameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
         >
           {isCameraEnabled ? <VideoIcon /> : <VideoOffIcon />}
         </button>
-        
+
         <button
           className={classNames(css.MediaBtn, { [css.MediaBtnActive]: isStreaming })}
-          onClick={() => setShowStreamModal(true)}
+          onClick={handleStreamClick}
           title={isStreaming ? "Streaming" : "Share Screen"}
         >
           {isStreaming ? <ScreenShareActiveIcon /> : <ScreenShareIcon />}

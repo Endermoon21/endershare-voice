@@ -56,11 +56,11 @@ export function PageNav({
   const isMobile = screenSize === ScreenSize.Mobile;
   const { showVoiceView, setShowVoiceView } = useLiveKitContext();
 
-  // Hide voice view when clicking anywhere in the nav (except voice channel itself)
+  // Hide voice view when clicking anywhere in the nav (except voice channel or voice panel)
   const handleNavClick = useCallback((e: React.MouseEvent) => {
-    // Don't hide if clicking on voice channel elements
+    // Don't hide if clicking on voice channel elements or voice panel
     const target = e.target as HTMLElement;
-    if (target.closest('[data-voice-channel]')) return;
+    if (target.closest('[data-voice-channel]') || target.closest('[data-voice-panel]')) return;
 
     if (showVoiceView) {
       setShowVoiceView(false);

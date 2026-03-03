@@ -9,7 +9,7 @@ export function VoicePanel() {
   const { isConnected } = useLiveKitContext();
 
   return (
-    <Box className={css.VoicePanel} direction="Column">
+    <Box className={css.VoicePanel} direction="Column" data-voice-panel="true">
       {/* VoiceBanner only shows when connected */}
       {isConnected && <VoiceBanner />}
 
