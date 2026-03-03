@@ -6,8 +6,6 @@ import classNames from "classnames";
 import { ContainerColor } from "../../styles/ContainerColor.css";
 import * as css from "./style.css";
 import { ScreenSize, useScreenSizeContext } from "../../hooks/useScreenSize";
-import { useRoomSettingsState } from "../../state/hooks/roomSettings";
-import { useSpaceSettingsState } from "../../state/hooks/spaceSettings";
 
 // Constants for sidebar resize
 const SIDEBAR_MIN_WIDTH = 180;
@@ -26,11 +24,6 @@ export function PageRoot({ nav, children }: PageRootProps) {
   const { showVoiceView, setShowVoiceView, isConnected } = useLiveKitContext();
   const prevPathRef = useRef(location.pathname);
 
-  // Check if any settings panel is open
-  const roomSettingsState = useRoomSettingsState();
-  const spaceSettingsState = useSpaceSettingsState();
-  const isSettingsOpen = !!roomSettingsState || !!spaceSettingsState;
-
   // Auto-hide voice view when navigating to ANY different page
   useEffect(() => {
     if (prevPathRef.current !== location.pathname && showVoiceView) {
@@ -38,13 +31,6 @@ export function PageRoot({ nav, children }: PageRootProps) {
     }
     prevPathRef.current = location.pathname;
   }, [location.pathname, showVoiceView, setShowVoiceView]);
-
-  // Hide voice view when settings panels open
-  useEffect(() => {
-    if (isSettingsOpen && showVoiceView) {
-      setShowVoiceView(false);
-    }
-  }, [isSettingsOpen, showVoiceView, setShowVoiceView]);
 
   return (
     <Box grow="Yes" className={ContainerColor({ variant: "Background" })}>

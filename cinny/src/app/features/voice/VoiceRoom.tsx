@@ -538,9 +538,11 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
             <button className={css.TileControlBtn} onClick={handlePip} title="Picture in Picture">
               <PipIcon />
             </button>
-            <button className={css.TileControlBtn} onClick={handlePopOut} title="Pop Out">
-              <PopOutIcon />
-            </button>
+            {!isStreamTile && (
+              <button className={css.TileControlBtn} onClick={handlePopOut} title="Pop Out">
+                <PopOutIcon />
+              </button>
+            )}
             <button className={css.TileControlBtn} onClick={handleFullscreen} title="Fullscreen">
               <FullscreenIcon />
             </button>
