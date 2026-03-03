@@ -234,7 +234,6 @@ export const UserAvatar = style({
   color: butter.text,
   position: 'relative',
   flexShrink: 0,
-  overflow: 'hidden',
 });
 
 globalStyle(`${UserAvatar} img`, {
