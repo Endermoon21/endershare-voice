@@ -11,17 +11,19 @@ const VideoIcon = () => (
   </svg>
 );
 
+// Screen share - simple monitor with arrow
 const ScreenShareIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M2 4.5C2 3.397 2.897 2.5 4 2.5H20C21.103 2.5 22 3.397 22 4.5V15.5C22 16.603 21.103 17.5 20 17.5H13V19.5H17V21.5H7V19.5H11V17.5H4C2.897 17.5 2 16.603 2 15.5V4.5ZM4 4.5V15.5H20V4.5H4Z" />
-    <path d="M15 8.5L11 12.5V9.5H9C7.897 9.5 7 10.397 7 11.5V13.5H9V11.5H11V14.5L15 10.5V8.5Z" />
+    <path d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3v2h10v-2h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 13H4V5h16v11Z" />
+    <path d="M12 15l4-4h-3V7h-2v4H8l4 4Z" />
   </svg>
 );
 
+// Active state - just uses green color via CSS, no overlay needed
 const ScreenShareActiveIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M2 4.5C2 3.397 2.897 2.5 4 2.5H20C21.103 2.5 22 3.397 22 4.5V15.5C22 16.603 21.103 17.5 20 17.5H13V19.5H17V21.5H7V19.5H11V17.5H4C2.897 17.5 2 16.603 2 15.5V4.5ZM4 4.5V15.5H20V4.5H4Z" />
-    <circle cx="12" cy="10" r="3" fill="#23a55a" />
+    <path d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3v2h10v-2h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 13H4V5h16v11Z" />
+    <path d="M12 15l4-4h-3V7h-2v4H8l4 4Z" />
   </svg>
 );
 
