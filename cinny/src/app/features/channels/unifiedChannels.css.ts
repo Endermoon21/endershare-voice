@@ -61,9 +61,9 @@ export const CategoryName = style({
 export const ChannelItem = style({
   display: 'flex',
   alignItems: 'center',
-  gap: config.space.S300,
+  gap: config.space.S200,
   padding: `${config.space.S200} ${config.space.S300}`,
-  marginLeft: config.space.S300,
+  marginLeft: config.space.S100,
   marginTop: config.space.S50,
   borderRadius: config.radii.R300,
   cursor: 'grab',
@@ -153,7 +153,7 @@ export const ChannelName = style({
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  fontSize: config.fontSize.T400,
+  fontSize: '0.95rem',
   fontWeight: 500,
   color: color.Surface.OnContainer,
 });
@@ -182,9 +182,9 @@ export const Participant = style({
   alignItems: 'center',
   gap: config.space.S200,
   padding: `${config.space.S100} ${config.space.S300}`,
-  fontSize: config.fontSize.T300,
+  fontSize: '0.875rem',
   color: color.Surface.OnContainer,
-  opacity: 0.85,
+  opacity: 0.9,
   borderRadius: config.radii.R300,
 
   ':hover': {
@@ -197,14 +197,14 @@ export const ParticipantSpeaking = style({
 });
 
 export const ParticipantAvatar = style({
-  width: '22px',
-  height: '22px',
+  width: '26px',
+  height: '26px',
   borderRadius: '50%',
   backgroundColor: color.Surface.Container,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '11px',
+  fontSize: '12px',
   fontWeight: 600,
   color: color.Surface.OnContainer,
   overflow: 'hidden',
