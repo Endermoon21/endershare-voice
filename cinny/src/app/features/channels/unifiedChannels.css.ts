@@ -173,19 +173,23 @@ export const VoiceParticipantCount = style({
 
 // Participants list for voice channels
 export const ParticipantsList = style({
-  marginLeft: config.space.S400,
-  paddingLeft: config.space.S200,
-  borderLeft: `2px solid ${color.Surface.ContainerLine}`,
+  marginLeft: config.space.S600,
+  paddingTop: config.space.S100,
 });
 
 export const Participant = style({
   display: 'flex',
   alignItems: 'center',
   gap: config.space.S200,
-  padding: `${config.space.S50} ${config.space.S200}`,
-  fontSize: config.fontSize.T200,
+  padding: `${config.space.S100} ${config.space.S300}`,
+  fontSize: config.fontSize.T300,
   color: color.Surface.OnContainer,
-  opacity: 0.8,
+  opacity: 0.85,
+  borderRadius: config.radii.R300,
+
+  ':hover': {
+    backgroundColor: color.Surface.ContainerHover,
+  },
 });
 
 export const ParticipantSpeaking = style({
@@ -193,17 +197,18 @@ export const ParticipantSpeaking = style({
 });
 
 export const ParticipantAvatar = style({
-  width: '18px',
-  height: '18px',
+  width: '22px',
+  height: '22px',
   borderRadius: '50%',
   backgroundColor: color.Surface.Container,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '10px',
+  fontSize: '11px',
   fontWeight: 600,
   color: color.Surface.OnContainer,
   overflow: 'hidden',
+  flexShrink: 0,
 });
 
 export const ParticipantAvatarSpeaking = style({
