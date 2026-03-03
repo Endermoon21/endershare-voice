@@ -280,12 +280,28 @@ export function VoiceChannelSection() {
                         <Text size="T300" truncate className={css.ParticipantName}>
                           {displayName}
                         </Text>
-                        {p.isMuted && (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={css.MutedIcon}>
-                            <path d="m2 2 20 20" strokeLinecap="round" />
-                            <path d="M9 9v3a3 3 0 0 0 5.12 2.12" strokeLinecap="round" />
-                          </svg>
-                        )}
+                        {/* Activity badges */}
+                        <Box className={css.ParticipantBadges}>
+                          {/* LIVE badge for streaming */}
+                          {'isScreenSharing' in p && p.isScreenSharing && (
+                            <span className={css.LiveBadge}>LIVE</span>
+                          )}
+                          {/* Camera icon */}
+                          {'isCameraEnabled' in p && p.isCameraEnabled && (
+                            <span className={css.CameraBadge}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4zM3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
+                              </svg>
+                            </span>
+                          )}
+                          {/* Muted icon */}
+                          {p.isMuted && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={css.MutedIcon}>
+                              <path d="m2 2 20 20" strokeLinecap="round" />
+                              <path d="M9 9v3a3 3 0 0 0 5.12 2.12" strokeLinecap="round" />
+                            </svg>
+                          )}
+                        </Box>
                       </Box>
                     );
                   })}

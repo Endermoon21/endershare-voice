@@ -103,6 +103,40 @@ export const MutedIcon = style({
   flexShrink: 0,
 });
 
+// Participant activity badges container
+export const ParticipantBadges = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  marginLeft: 'auto',
+});
+
+// LIVE badge for streaming
+export const LiveBadge = style({
+  backgroundColor: '#ed4245',
+  color: '#fff',
+  padding: '1px 4px',
+  borderRadius: '3px',
+  fontSize: '9px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.02em',
+});
+
+// Camera icon badge
+export const CameraBadge = style({
+  color: '#23a55a',
+  display: 'flex',
+  alignItems: 'center',
+});
+
+// Screen share icon badge
+export const ScreenShareBadge = style({
+  color: '#5865f2',
+  display: 'flex',
+  alignItems: 'center',
+});
+
 export const ParticipantAvatarWithImage = style({
   backgroundColor: 'transparent',
   overflow: 'hidden',
