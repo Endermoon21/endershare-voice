@@ -741,7 +741,7 @@ export function VoiceRoom() {
           {/* Camera button with device selector dropdown */}
           <div ref={cameraButtonRef} className={css.ControlBtnWithDropdown}>
             <button
-              className={css.ControlBtnMain}
+              className={classNames(css.ControlBtnMain, { [css.ControlBtnMainGreen]: isCameraEnabled })}
               onClick={toggleCamera}
               title={isCameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
             >

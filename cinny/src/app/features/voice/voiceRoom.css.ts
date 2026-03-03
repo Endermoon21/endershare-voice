@@ -821,6 +821,18 @@ export const ControlBtnMainActive = style({
   ":hover": { backgroundColor: "#36383f", color: "#f23f43" },
 });
 
+// Green active state for camera enabled
+export const ControlBtnMainGreen = style({
+  backgroundColor: "rgba(35, 165, 90, 0.2)",
+  color: "#23a55a",
+  boxShadow: "0 0 8px rgba(35, 165, 90, 0.4)",
+  ":hover": {
+    backgroundColor: "rgba(35, 165, 90, 0.3)",
+    color: "#23a55a",
+    boxShadow: "0 0 12px rgba(35, 165, 90, 0.5)",
+  },
+});
+
 export const ControlBtnDropdownArrow = style({
   display: "flex",
   alignItems: "center",
