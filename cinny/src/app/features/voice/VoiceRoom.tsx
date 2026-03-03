@@ -164,6 +164,21 @@ const VideoIcon = () => (
   </svg>
 );
 
+const VideoOffIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l6-4v11l-6-4V14a2 2 0 0 1-2 2h-2.34" />
+    <path d="M2 2l20 20" />
+    <path d="M4.56 4.56A2 2 0 0 0 4 6v8a2 2 0 0 0 2 2h8" />
+  </svg>
+);
+
+const CameraSmallIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m22 8-6 4 6 4V8Z" />
+    <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+  </svg>
+);
+
 const ScreenShareActiveIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" />
@@ -385,10 +400,28 @@ interface ParticipantTileProps {
 
 function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTileProps) {
   const [showPopup, setShowPopup] = useState(false);
-  const { participantVolumes } = useLiveKitContext();
+  const { participantVolumes, getCameraElement } = useLiveKitContext();
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const volume = participantVolumes[participant.identity] ?? 1;
   const isLocalMuted = volume === 0;
   const tileColor = getColorForUser(participant.identity);
+
+  // Attach camera video when participant has camera enabled
+  useEffect(() => {
+    if (participant.isCameraEnabled && videoContainerRef.current) {
+      const videoEl = getCameraElement(participant.identity);
+      if (videoEl) {
+        videoContainerRef.current.innerHTML = "";
+        videoEl.style.width = "100%";
+        videoEl.style.height = "100%";
+        videoEl.style.objectFit = "cover";
+        videoEl.style.borderRadius = "8px";
+        videoContainerRef.current.appendChild(videoEl);
+      }
+    } else if (videoContainerRef.current) {
+      videoContainerRef.current.innerHTML = "";
+    }
+  }, [participant.isCameraEnabled, participant.identity, getCameraElement]);
 
   const handleClick = () => {
     if (!participant.isLocal) setShowPopup(true);
@@ -398,36 +431,53 @@ function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTil
     <div className={css.TileWrapper}>
       <div
         className={classNames(css.ParticipantTile, {
-          [css.TileClickable]: !participant.isLocal
+          [css.TileClickable]: !participant.isLocal,
+          [css.ParticipantTileSpeaking]: participant.isSpeaking && !isLocalMuted,
         })}
-        style={{ backgroundColor: tileColor }}
+        style={{ backgroundColor: participant.isCameraEnabled ? "#000" : tileColor }}
         onClick={handleClick}
       >
-        <div className={css.TileAvatarContainer}>
-          <div className={classNames(css.TileAvatar, {
-            [css.TileAvatarSpeaking]: participant.isSpeaking && !isLocalMuted,
-          })}>
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className={css.TileAvatarImg} />
-            ) : (
-              <span>{displayName.charAt(0).toUpperCase()}</span>
-            )}
+        {participant.isCameraEnabled ? (
+          // Show camera video
+          <div ref={videoContainerRef} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }} />
+        ) : (
+          // Show avatar
+          <div className={css.TileAvatarContainer}>
+            <div className={classNames(css.TileAvatar, {
+              [css.TileAvatarFallback]: !avatarUrl,
+            })}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className={css.TileAvatarImg} />
+              ) : (
+                <span>{displayName.charAt(0).toUpperCase()}</span>
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Status overlays - show on top of video or avatar */}
+        <div className={css.TileAvatarContainer} style={{ position: "absolute", bottom: "50px", right: "12px" }}>
           {participant.isScreenSharing && (
-            <div className={classNames(css.TileStatusOverlay, css.TileStatusScreenShare)}>
+            <div className={classNames(css.TileStatusOverlay, css.TileStatusScreenShare)} style={{ position: "relative", bottom: "auto", right: "auto", marginRight: "4px" }}>
               <ScreenShareSmallIcon />
             </div>
           )}
+          {participant.isCameraEnabled && (
+            <div className={classNames(css.TileStatusOverlay, css.TileStatusCamera)} style={{ position: "relative", bottom: "auto", right: "auto", marginRight: "4px" }}>
+              <CameraSmallIcon />
+            </div>
+          )}
           {isLocalMuted ? (
-            <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)}>
+            <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)} style={{ position: "relative", bottom: "auto", right: "auto" }}>
               <VolumeMuteIcon />
             </div>
           ) : participant.isMuted && (
-            <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)}>
+            <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)} style={{ position: "relative", bottom: "auto", right: "auto" }}>
               <MicOffSmallIcon />
             </div>
           )}
         </div>
+
         <div className={css.TileInfo}>
           <span className={css.TileName}>{displayName}</span>
           {participant.isLocal && <span className={css.TileYou}>(You)</span>}
@@ -448,8 +498,8 @@ function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTil
 export function VoiceRoom() {
   const mx = useMatrixClient();
   const {
-    currentRoom, participants, isMuted, screenShareInfo, connectionQuality,
-    disconnect, toggleMute, getScreenShareElement, room
+    currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, connectionQuality,
+    disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room
   } = useLiveKitContext();
 
   const deviceSelection = useDeviceSelection(room);
@@ -648,8 +698,12 @@ export function VoiceRoom() {
 
       <div className={css.ControlBar}>
         <div className={css.ControlGroup}>
-          <button className={css.ControlBtn} disabled title="Video (Coming Soon)">
-            <VideoIcon />
+          <button
+            className={classNames(css.ControlBtn, { [css.ControlBtnActive]: !isCameraEnabled })}
+            onClick={toggleCamera}
+            title={isCameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
+          >
+            {isCameraEnabled ? <VideoIcon /> : <VideoOffIcon />}
           </button>
 
           {/* Mute button with device selector dropdown */}

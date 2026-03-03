@@ -39,6 +39,8 @@ export const VoicePanel = style({
   flexDirection: 'column',
   backgroundColor: butter.surface,
   borderTop: `1px solid ${butter.border}`,
+  position: 'relative',
+  zIndex: 1, // Keep below app modals
 });
 
 // ===========================================
@@ -455,7 +457,7 @@ export const RNNoiseModal = style({
   borderRadius: '8px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
   border: `1px solid ${butter.border}`,
-  zIndex: 1000,
+  zIndex: 50,
   animation: `${modalFadeIn} 0.15s ${discordEase}`,
   overflow: 'hidden',
 });
@@ -730,7 +732,7 @@ export const StatsModalOverlay = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 9999,
+  zIndex: 100, // Below app modals (folds Overlay uses higher)
   backdropFilter: 'blur(4px)',
 });
 
@@ -1036,7 +1038,7 @@ export const GameStreamPanel = style({
   border: `1px solid ${butter.border}`,
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
   overflow: 'hidden',
-  zIndex: 1000,
+  zIndex: 50,
 });
 
 export const GameStreamPanelHeader = style({
@@ -1246,7 +1248,7 @@ export const StreamModalOverlay = style({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  zIndex: 10000,
+  zIndex: 100, // Below app modals
   backdropFilter: "blur(8px)",
 });
 

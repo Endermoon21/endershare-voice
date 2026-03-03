@@ -44,10 +44,8 @@ export const MainArea = style({
   flex: 1,
   display: "flex",
   flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "16px",
-  overflow: "auto",
+  padding: "16px 8px",
+  overflow: "hidden",
   minHeight: 0,
   backgroundColor: "#1e1f22",
   gap: "8px",
@@ -70,14 +68,14 @@ export const QualityGood = style({ backgroundColor: "rgba(35, 165, 90, 0.2)", co
 export const QualityPoor = style({ backgroundColor: "rgba(250, 166, 26, 0.2)", color: "#f0b232" });
 export const QualityBad = style({ backgroundColor: "rgba(242, 63, 67, 0.2)", color: "#f23f43" });
 
-// Discord-style: vertical stack, full-width tiles
+// Discord-style: grid that fills available space
 export const ParticipantGrid = style({
-  justifyContent: "center",
-  display: "flex",
-  flexDirection: "column",
+  display: "grid",
+  gridTemplateColumns: "1fr",
+  gridAutoRows: "1fr",
   gap: "8px",
   width: "100%",
-  maxWidth: "550px",
+  height: "100%",
   flex: 1,
   minHeight: 0,
 });
@@ -89,18 +87,26 @@ export const ParticipantTile = style({
   justifyContent: "center",
   position: "relative",
   borderRadius: "8px",
-  flex: 1,
-  minHeight: "180px",
-  maxHeight: "350px",
+  width: "100%",
+  height: "100%",
+  minHeight: 0,
   backgroundColor: "#5865f2", // Default Discord blurple, will be overridden per-user
-  transition: `background-color 0.15s ${discordEase}`,
+  transition: `background-color 0.15s ${discordEase}, box-shadow 0.15s ${discordEase}`,
   cursor: "default",
   overflow: "hidden",
+  boxSizing: "border-box",
+  border: "3px solid transparent",
 });
 
 export const ParticipantTileLarge = style({});
 
-// Speaking state - ring around avatar handled separately
+// Speaking state - green border around entire tile
+export const ParticipantTileSpeaking = style({
+  borderColor: "#23a55a",
+  boxShadow: "0 0 0 1px #23a55a, 0 0 12px rgba(35, 165, 90, 0.4)",
+});
+
+// Legacy - keep for compatibility
 export const Speaking = style({});
 
 export const TileAvatarContainer = style({
@@ -115,7 +121,7 @@ export const TileAvatar = style({
   width: "80px",
   height: "80px",
   borderRadius: "50%",
-  backgroundColor: "#5865f2",
+  backgroundColor: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -126,6 +132,11 @@ export const TileAvatar = style({
   boxSizing: "border-box",
   overflow: "hidden",
   transition: `border-color 0.15s ${discordEase}`,
+});
+
+// Fallback background for users without profile pictures
+export const TileAvatarFallback = style({
+  backgroundColor: "#5865f2",
 });
 
 // Speaking indicator - colored ring around avatar
@@ -159,6 +170,7 @@ export const TileStatusOverlay = style({
 export const TileStatusMuted = style({ color: "#f23f43" });
 export const TileStatusDeafened = style({ color: "#f23f43" });
 export const TileStatusScreenShare = style({ color: "#23a55a", bottom: "auto", top: "-2px", right: "-2px" });
+export const TileStatusCamera = style({ color: "#23a55a" });
 
 // Discord-style: name in bottom-left with dark pill
 export const TileInfo = style({
@@ -454,10 +466,10 @@ export const TileClickable = style({
 
 export const TileWrapper = style({
   position: "relative",
-  flex: 1,
   display: "flex",
-  minHeight: "180px",
-  maxHeight: "350px",
+  width: "100%",
+  height: "100%",
+  minHeight: 0,
 });
 
 // Legacy exports
@@ -666,7 +678,7 @@ export const DeviceMenuWrapper = style({
   minWidth: "280px",
   maxWidth: "350px",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
-  zIndex: 1000,
+  zIndex: 50,
   border: "1px solid rgba(255, 255, 255, 0.1)",
   overflow: "hidden",
   animation: `${fadeSlideIn} 0.15s ${discordEaseOut}`,

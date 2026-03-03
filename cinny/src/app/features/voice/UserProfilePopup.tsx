@@ -64,7 +64,7 @@ export function UserProfilePopup({ anchorRect, onClose }: UserProfilePopupProps)
         position: 'fixed',
         bottom: window.innerHeight - anchorRect.top + 8,
         left: anchorRect.left,
-        zIndex: 9999,
+        zIndex: 50,
       }
     : {};
 

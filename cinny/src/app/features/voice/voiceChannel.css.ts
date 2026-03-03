@@ -179,7 +179,7 @@ export const ModalOverlay = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 1000,
+  zIndex: 100, // Below app modals
 });
 
 export const ModalContent = style({

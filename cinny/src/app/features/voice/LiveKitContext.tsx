@@ -24,6 +24,7 @@ export interface VoiceParticipant {
   isMuted: boolean;
   isLocal: boolean;
   isScreenSharing: boolean;
+  isCameraEnabled: boolean;
   volume: number;
 }
 
@@ -51,6 +52,7 @@ interface LiveKitContextValue {
   currentRoom: string | null;
   isMuted: boolean;
   isDeafened: boolean;
+  isCameraEnabled: boolean;
   screenShareInfo: ScreenShareInfo | null;
   connectionQuality: ConnectionQuality | null;
   showVoiceView: boolean;
@@ -59,8 +61,10 @@ interface LiveKitContextValue {
   disconnect: () => void;
   toggleMute: () => void;
   toggleDeafen: () => void;
+  toggleCamera: () => void;
   setShowVoiceView: (show: boolean) => void;
   getScreenShareElement: () => HTMLVideoElement | null;
+  getCameraElement: (identity: string) => HTMLVideoElement | null;
   setParticipantVolume: (identity: string, volume: number) => void;
   isNoiseFilterEnabled: boolean;
   isNoiseFilterPending: boolean;
@@ -82,11 +86,13 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null);
   const [showVoiceView, setShowVoiceView] = useState(false);
   const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const roomRef = useRef<Room | null>(null);
   const [microphoneTrack, setMicrophoneTrack] = useState<any>(null);
   const noiseFilter = useNoiseFilter(microphoneTrack);
   const audioContainerRef = useRef<HTMLDivElement | null>(null);
   const screenShareVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const diagnosticsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const volumesRef = useRef<Record<string, number>>({});
 
@@ -171,30 +177,40 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       }
     } else if (track.kind === Track.Kind.Video) {
       // Detect screen share either by track source OR by participant being a WHIP ingress (-stream suffix)
-      const isScreenShare = track.source === Track.Source.ScreenShare || 
+      const isScreenShare = track.source === Track.Source.ScreenShare ||
                            (isIngressStream && (track.source === Track.Source.Camera || track.source === Track.Source.Unknown));
-      
+
       if (isScreenShare) {
         console.log("[LiveKit] Screen share video track subscribed from", participant.identity, "source:", track.source, "isIngress:", isIngressStream);
         // Extract the original username from ingress identity (remove -stream suffix)
         const displayIdentity = isIngressStream ? participant.identity.replace(/-stream$/, "") : participant.identity;
-        const displayName = isIngressStream 
+        const displayName = isIngressStream
           ? (participant.name?.replace(/ \(Stream\)$/, "") || displayIdentity)
           : (participant.name || participant.identity);
-        
+
         setScreenShareInfo({
           participantIdentity: participant.identity,
           participantName: displayName,
           track,
           audioTrack: null
         });
+      } else if (track.source === Track.Source.Camera) {
+        // Camera track from remote participant
+        console.log("[LiveKit] Camera track subscribed from", participant.identity);
+        const videoElement = document.createElement("video");
+        videoElement.autoplay = true;
+        videoElement.playsInline = true;
+        videoElement.muted = true; // Mute video element (audio comes separately)
+        videoElement.style.transform = "translateZ(0)";
+        track.attach(videoElement);
+        cameraVideoRefs.current.set(participant.identity, videoElement);
       }
     }
   }, []);
 
   const handleTrackUnsubscribed = useCallback((track: RemoteTrack, publication: any, participant: RemoteParticipant) => {
     const isIngressStream = participant.identity.endsWith("-stream");
-    
+
     if (track.kind === Track.Kind.Audio) {
       if (track.source === Track.Source.ScreenShareAudio || (isIngressStream && track.source === Track.Source.Microphone)) {
         const el = document.getElementById("screenshare-audio-" + participant.identity);
@@ -204,10 +220,18 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         track.detach().forEach((el) => el.remove());
       }
     } else if (track.kind === Track.Kind.Video) {
-      const isScreenShare = track.source === Track.Source.ScreenShare || 
+      const isScreenShare = track.source === Track.Source.ScreenShare ||
                            (isIngressStream && (track.source === Track.Source.Camera || track.source === Track.Source.Unknown));
       if (isScreenShare) {
         setScreenShareInfo(null);
+      } else if (track.source === Track.Source.Camera) {
+        // Clean up camera video element
+        console.log("[LiveKit] Camera track unsubscribed from", participant.identity);
+        const videoElement = cameraVideoRefs.current.get(participant.identity);
+        if (videoElement) {
+          track.detach(videoElement);
+          cameraVideoRefs.current.delete(participant.identity);
+        }
       }
     }
   }, []);
@@ -224,6 +248,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isMuted: !local.isMicrophoneEnabled,
       isLocal: true,
       isScreenSharing: local.isScreenShareEnabled,
+      isCameraEnabled: local.isCameraEnabled,
       volume: 1
     });
     room.remoteParticipants.forEach((p) => {
@@ -234,6 +259,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         isMuted: !p.isMicrophoneEnabled,
         isLocal: false,
         isScreenSharing: p.isScreenShareEnabled,
+        isCameraEnabled: p.isCameraEnabled,
         volume: volumesRef.current[p.identity] ?? 1
       });
     });
@@ -255,7 +281,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         audioCaptureDefaults: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false
+          autoGainControl: true, // Enable AGC for better voice pickup
         },
         publishDefaults: {
           dtx: true,
@@ -314,7 +340,10 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     stopDiagnostics();
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
     if (audioContainerRef.current) audioContainerRef.current.innerHTML = "";
-    setIsConnected(false); setCurrentRoom(null); setParticipants([]); setIsMuted(true); setIsDeafened(false); setScreenShareInfo(null); setShowVoiceView(false);
+    // Clean up camera video elements
+    cameraVideoRefs.current.forEach((el) => el.remove());
+    cameraVideoRefs.current.clear();
+    setIsConnected(false); setCurrentRoom(null); setParticipants([]); setIsMuted(true); setIsDeafened(false); setIsCameraEnabled(false); setScreenShareInfo(null); setShowVoiceView(false);
   }, [stopDiagnostics]);
 
   const toggleMute = useCallback(async () => {
@@ -329,6 +358,42 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     audioElements?.forEach((audio) => { audio.muted = newDeafened; });
     if (newDeafened && !isMuted) toggleMute();
   }, [isDeafened, isMuted, toggleMute]);
+
+  const toggleCamera = useCallback(async () => {
+    const room = roomRef.current; if (!room) return;
+    const newCameraEnabled = !isCameraEnabled;
+    try {
+      await room.localParticipant.setCameraEnabled(newCameraEnabled);
+      setIsCameraEnabled(newCameraEnabled);
+      // Handle local camera video element
+      if (newCameraEnabled) {
+        const cameraTrack = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+        if (cameraTrack) {
+          const videoElement = document.createElement("video");
+          videoElement.autoplay = true;
+          videoElement.playsInline = true;
+          videoElement.muted = true;
+          videoElement.style.transform = "scaleX(-1) translateZ(0)"; // Mirror local camera
+          cameraTrack.attach(videoElement);
+          cameraVideoRefs.current.set(room.localParticipant.identity, videoElement);
+        }
+      } else {
+        const videoElement = cameraVideoRefs.current.get(room.localParticipant.identity);
+        if (videoElement) {
+          const cameraTrack = room.localParticipant.getTrackPublication(Track.Source.Camera)?.track;
+          if (cameraTrack) cameraTrack.detach(videoElement);
+          cameraVideoRefs.current.delete(room.localParticipant.identity);
+        }
+      }
+      updateParticipants();
+    } catch (err) {
+      console.error("[LiveKit] Toggle camera error:", err);
+    }
+  }, [isCameraEnabled, updateParticipants]);
+
+  const getCameraElement = useCallback((identity: string): HTMLVideoElement | null => {
+    return cameraVideoRefs.current.get(identity) || null;
+  }, []);
 
   const getScreenShareElement = useCallback((): HTMLVideoElement | null => {
     if (!screenShareInfo?.track) return null;
@@ -365,6 +430,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       currentRoom,
       isMuted,
       isDeafened,
+      isCameraEnabled,
       screenShareInfo,
       connectionQuality,
       showVoiceView,
@@ -373,8 +439,10 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       disconnect,
       toggleMute,
       toggleDeafen,
+      toggleCamera,
       setShowVoiceView,
       getScreenShareElement,
+      getCameraElement,
       setParticipantVolume,
       isNoiseFilterEnabled: noiseFilter.isNoiseFilterEnabled,
       isNoiseFilterPending: noiseFilter.isNoiseFilterPending,
