@@ -29,118 +29,126 @@ function getColorForUser(identity: string): string {
   return TILE_COLORS[Math.abs(hash) % TILE_COLORS.length];
 }
 
-// Icons
+// Discord-style filled icons
 const MicIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 19v3" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><rect x="9" y="2" width="6" height="13" rx="3" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4Z" />
+    <path d="M6 12a6 6 0 0 0 12 0h-2a4 4 0 0 1-8 0H6Z" />
+    <path d="M11 18.93A6.01 6.01 0 0 1 6 13h2a4 4 0 0 0 8 0h2a6.01 6.01 0 0 1-5 5.93V22h-2v-3.07Z" />
   </svg>
 );
 
 const MicOffIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 19v3" /><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33" /><path d="M16.95 16.95A7 7 0 0 1 5 12v-2" /><path d="M18.89 13.23A7 7 0 0 0 19 12v-2" /><path d="m2 2 20 20" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2a4 4 0 0 0-4 4v6a4 4 0 0 0 .06.65l7.94-7.94V6a4 4 0 0 0-4-4Z" />
+    <path d="M18 12h-2c0 .34-.04.67-.12 1l1.62 1.62c.32-.82.5-1.7.5-2.62Z" />
+    <path d="M11 18.93A6.01 6.01 0 0 1 6 13h2a4 4 0 0 0 6.29 3.29l1.42 1.42A5.98 5.98 0 0 1 13 18.93V22h-2v-3.07Z" />
+    <path d="M2.1 2.1l19.8 19.8 1.4-1.4L3.5.7 2.1 2.1Z" />
   </svg>
 );
 
 const MicOffSmallIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m2 2 20 20" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2a4 4 0 0 0-4 4v6l8-8V6a4 4 0 0 0-4-4Z" />
+    <path d="M2.1 2.1l19.8 19.8 1.4-1.4L3.5.7 2.1 2.1Z" />
   </svg>
 );
 
 const HeadphonesIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2H5v-1a7 7 0 0 1 14 0v1h-2c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9Z" />
   </svg>
 );
 
 const HeadphonesOffIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 14h-1.343" /><path d="M9.128 3.47A9 9 0 0 1 21 12v3.343" /><path d="m2 2 20 20" /><path d="M20.414 20.414A2 2 0 0 1 19 21h-1a2 2 0 0 1-2-2v-3" /><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.636-6.364" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2H5v-1a7 7 0 0 1 14 0v1h-2c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9Z" />
+    <path d="M2.1 2.1l19.8 19.8 1.4-1.4L3.5.7 2.1 2.1Z" />
   </svg>
 );
 
 const DeafenedSmallIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m2 2 20 20" /><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.636-6.364" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3a9 9 0 0 0-9 9v7c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2H5v-1a7 7 0 0 1 14 0v1h-2" />
+    <path d="M2.1 2.1l19.8 19.8 1.4-1.4L3.5.7 2.1 2.1Z" />
   </svg>
 );
 
 const ScreenShareIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="m17 8 5-5" /><path d="M17 3h5v5" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2 4.5C2 3.397 2.897 2.5 4 2.5H20C21.103 2.5 22 3.397 22 4.5V15.5C22 16.603 21.103 17.5 20 17.5H13V19.5H17V21.5H7V19.5H11V17.5H4C2.897 17.5 2 16.603 2 15.5V4.5ZM4 4.5V15.5H20V4.5H4Z" />
+    <path d="M15 8.5L11 12.5V9.5H9C7.897 9.5 7 10.397 7 11.5V13.5H9V11.5H11V14.5L15 10.5V8.5Z" />
   </svg>
 );
 
 const ScreenShareOffIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" /><path d="M8 21h8" /><path d="M12 17v4" /><path d="m22 3-5 5" /><path d="m17 3 5 5" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2 4.5C2 3.397 2.897 2.5 4 2.5H20C21.103 2.5 22 3.397 22 4.5V15.5C22 16.603 21.103 17.5 20 17.5H13V19.5H17V21.5H7V19.5H11V17.5H4C2.897 17.5 2 16.603 2 15.5V4.5ZM4 4.5V15.5H20V4.5H4Z" />
+    <path d="M9.17 13.17L12 10.34l2.83 2.83 1.41-1.41L13.41 9l2.83-2.83-1.41-1.41L12 7.59 9.17 4.76 7.76 6.17 10.59 9l-2.83 2.83 1.41 1.34Z" />
   </svg>
 );
 
 const ScreenShareSmallIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2 4C2 2.897 2.897 2 4 2H20C21.103 2 22 2.897 22 4V15C22 16.103 21.103 17 20 17H13V19H17V21H7V19H11V17H4C2.897 17 2 16.103 2 15V4ZM4 4V15H20V4H4Z" />
   </svg>
 );
 
 const DisconnectIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272" /><path d="M22 2 2 22" /><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21.1169 1.11603L22.8839 2.88303L19.7679 6.00003L21.9999 8.23203V11.001C21.9999 11.5523 21.5513 12.001 20.9999 12.001C20.6637 12.001 20.3554 11.8464 20.154 11.601L18.3539 9.80003L14.1209 14.034L16.3169 16.231C19.1619 15.035 22.5249 15.563 24.8839 17.921L23.4699 19.335C21.6119 17.479 18.7609 17.127 16.5279 18.281L19.7679 21.519L17.9999 23.285L2.88388 8.16903L4.64988 6.40203L6.71988 8.47203C5.56588 6.23803 5.91788 3.38903 7.77388 1.53003L9.18788 2.94403C6.82988 5.30203 6.30188 8.66503 7.49688 11.511L10.3219 8.68703C10.1229 8.48503 9.99988 8.20903 9.99988 7.90003V4.00003C9.99988 3.44772 10.4476 3.00003 10.9999 3.00003H12.9999C13.5522 3.00003 13.9999 3.44772 13.9999 4.00003V4.90003L18.3539 0.545029L18.3544 0.544995C18.7449 0.154471 19.3781 0.154471 19.7686 0.545029L21.1169 1.11603Z" />
   </svg>
 );
 
-
 const VoiceChannelIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.7 }}>
-    <path d="M12 3a1 1 0 0 0-1-1h-.06a1 1 0 0 0-.74.32L5.92 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2.92l4.28 4.68a1 1 0 0 0 .74.32H11a1 1 0 0 0 1-1V3ZM15.1 20.75c-.58.14-1.1-.33-1.1-.92v-.03c0-.5.37-.92.85-1.05a7 7 0 0 0 0-13.5A1.11 1.11 0 0 1 14 4.2v-.03c0-.6.52-1.06 1.1-.92a9 9 0 0 1 0 17.5Z"/>
-    <path d="M15.16 16.51c-.57.28-1.16-.2-1.16-.83v-.14c0-.43.28-.8.63-1.02a3 3 0 0 0 0-5.04c-.35-.23-.63-.6-.63-1.02v-.14c0-.63.59-1.1 1.16-.83a5 5 0 0 1 0 9.02Z"/>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3a1 1 0 0 0-1-1h-.06a1 1 0 0 0-.74.32L5.92 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2.92l4.28 4.68a1 1 0 0 0 .74.32H11a1 1 0 0 0 1-1V3Z" />
+    <path d="M15.5 12c0-1.5-.9-2.8-2.2-3.4v6.8c1.3-.6 2.2-1.9 2.2-3.4Z" />
+    <path d="M14.3 5.2v1.6c2.3.8 4 3 4 5.6s-1.7 4.8-4 5.6v1.6c3.2-.9 5.5-3.8 5.5-7.2s-2.3-6.3-5.5-7.2Z" />
   </svg>
 );
 
 const FullscreenIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7 14H5v5h5v-2H7v-3Zm-2-4h2V7h3V5H5v5Zm12 7h-3v2h5v-5h-2v3ZM14 5v2h3v3h2V5h-5Z" />
   </svg>
 );
 
 const PipIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="3" width="20" height="14" rx="2"/><rect x="10" y="9" width="10" height="7" rx="1"/>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 7h-8v6h8V7Zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2Zm0 16H3V5h18v14Z" />
   </svg>
 );
 
 const UsersIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z" />
+    <path d="M21 9V6h-2v3h-3v2h3v3h2v-3h3V9h-3Z" opacity="0.6" />
   </svg>
 );
 
 const VolumeHighIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02ZM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77Z" />
   </svg>
 );
 
 const VolumeMuteIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63Zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71ZM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3ZM12 4L9.91 6.09 12 8.18V4Z" />
   </svg>
 );
 
 const VideoIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m22 8-6 4 6 4V8Z" />
-    <rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21.526 8.149C21.231 7.966 20.862 7.951 20.553 8.105L17 9.882V8C17 6.897 16.103 6 15 6H4C2.897 6 2 6.897 2 8V16C2 17.103 2.897 18 4 18H15C16.103 18 17 17.103 17 16V14.118L20.553 15.894C20.694 15.965 20.847 16 21 16C21.183 16 21.365 15.949 21.526 15.851C21.82 15.668 22 15.347 22 15V9C22 8.653 21.82 8.332 21.526 8.149Z" />
   </svg>
 );
 
 const ScreenShareActiveIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" />
-    <path d="M8 21h8" />
-    <path d="M12 17v4" />
-    <circle cx="18" cy="6" r="4" fill="#F23F43" stroke="none" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2 4.5C2 3.397 2.897 2.5 4 2.5H20C21.103 2.5 22 3.397 22 4.5V15.5C22 16.603 21.103 17.5 20 17.5H13V19.5H17V21.5H7V19.5H11V17.5H4C2.897 17.5 2 16.603 2 15.5V4.5ZM4 4.5V15.5H20V4.5H4Z" />
+    <circle cx="12" cy="10" r="3" fill="#23a55a" />
   </svg>
 );
 
