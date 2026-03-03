@@ -108,7 +108,11 @@ export const ParticipantTileSpeaking = style({
 export const Speaking = style({});
 
 export const TileAvatarContainer = style({
-  position: "relative",
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

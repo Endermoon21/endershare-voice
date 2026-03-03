@@ -120,3 +120,15 @@ export const PageContentCenter = style([
     margin: 'auto',
   },
 ]);
+
+// Resize handle for draggable sidebar
+export const ResizeHandle = style({
+  backgroundColor: 'transparent',
+  transition: 'background-color 0.15s ease',
+  ':hover': {
+    backgroundColor: color.Primary.Main,
+  },
+  ':active': {
+    backgroundColor: color.Primary.Main,
+  },
+});

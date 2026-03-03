@@ -34,22 +34,24 @@ const discordEase = 'cubic-bezier(0.4, 0, 0.2, 1)';
 // ===========================================
 // VOICE PANEL CONTAINER
 // ===========================================
-// Spans both server sidebar (66px) and channel sidebar (256px) = 322px total
-// Responsive: On tablet/mobile, adjusts width accordingly
+// Uses CSS variable --sidebar-width for dynamic width based on resizable sidebar
+// Server sidebar is fixed at 68px, channel sidebar is variable
+// z-index: 0 to stay below all modals/overlays (folds uses 9999)
 export const VoicePanel = style({
   position: 'fixed',
   bottom: 0,
   left: 0,
-  width: '322px', // Desktop: 66px (server sidebar) + 256px (channel sidebar)
+  // Dynamic width: 68px (server sidebar) + CSS variable (channel sidebar, default 256px)
+  width: 'calc(68px + var(--sidebar-width, 256px))',
   display: 'flex',
   flexDirection: 'column',
   backgroundColor: butter.surface,
   borderTop: `1px solid ${butter.border}`,
-  zIndex: 2, // Above sidebar content but below modals
+  zIndex: 0, // At base level, below all modals/overlays
   // Tablet breakpoint (1124px and below) - just channel sidebar width
   '@media': {
     'screen and (max-width: 1124px)': {
-      width: '256px', // Channel sidebar only
+      width: 'var(--sidebar-width, 256px)', // Channel sidebar only
     },
     // Mobile breakpoint (750px and below) - full width
     'screen and (max-width: 750px)': {

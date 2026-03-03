@@ -1,4 +1,4 @@
-import React, { ComponentProps, MutableRefObject, ReactNode, useEffect, useRef } from "react";
+import React, { ComponentProps, MutableRefObject, ReactNode, useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { VoicePanel, VoiceRoom, useLiveKitContext } from "../../features/voice";
 import { Box, Header, Line, Scroll, Text, as } from "folds";
@@ -8,6 +8,12 @@ import * as css from "./style.css";
 import { ScreenSize, useScreenSizeContext } from "../../hooks/useScreenSize";
 import { useRoomSettingsState } from "../../state/hooks/roomSettings";
 import { useSpaceSettingsState } from "../../state/hooks/spaceSettings";
+
+// Constants for sidebar resize
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 400;
+const SIDEBAR_DEFAULT_WIDTH = 256;
+const SIDEBAR_STORAGE_KEY = "cinny_sidebar_width";
 
 type PageRootProps = {
   nav: ReactNode;
@@ -61,17 +67,85 @@ export function PageNav({
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
 
+  // Resizable sidebar state
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === 'undefined') return SIDEBAR_DEFAULT_WIDTH;
+    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    return saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT_WIDTH;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Handle resize
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!sidebarRef.current) return;
+      const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - sidebarRect.left;
+      const clampedWidth = Math.min(Math.max(newWidth, SIDEBAR_MIN_WIDTH), SIDEBAR_MAX_WIDTH);
+      setSidebarWidth(clampedWidth);
+      // Update CSS variable for VoicePanel
+      document.documentElement.style.setProperty('--sidebar-width', `${clampedWidth}px`);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarWidth.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
+
+  // Set initial CSS variable
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+  }, []);
+
+  // Don't use resizable width on mobile
+  const widthStyle = isMobile ? undefined : { width: sidebarWidth, minWidth: sidebarWidth };
+
   return (
     <Box
+      ref={sidebarRef}
       grow={isMobile ? "Yes" : undefined}
       className={css.PageNav({ size })}
       shrink={isMobile ? "Yes" : "No"}
       direction="Column"
+      style={{ ...widthStyle, position: 'relative' }}
     >
       <Box grow="Yes" direction="Column" style={{ minHeight: 0, overflow: "hidden" }}>
         {children}
       </Box>
       <VoicePanel />
+      {/* Resize handle */}
+      {!isMobile && (
+        <div
+          className={css.ResizeHandle}
+          onMouseDown={handleMouseDown}
+          style={{
+            position: 'absolute',
+            right: -3,
+            top: 0,
+            bottom: 0,
+            width: 6,
+            cursor: 'col-resize',
+            zIndex: 10,
+          }}
+        />
+      )}
     </Box>
   );
 }

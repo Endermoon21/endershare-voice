@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box } from 'folds';
+import { Box, Portal } from 'folds';
 import { useLiveKitContext } from './LiveKitContext';
 import { useRoomSettingsState } from '../../state/hooks/roomSettings';
 import { useSpaceSettingsState } from '../../state/hooks/spaceSettings';
@@ -16,13 +16,16 @@ export function VoicePanel() {
   const spaceSettingsState = useSpaceSettingsState();
   const isAnySettingsOpen = !!roomSettingsState || !!spaceSettingsState || isUserSettingsOpen;
 
+  // Render via Portal to ensure proper z-index stacking with folds modals
   return (
-    <Box className={css.VoicePanel} direction="Column">
-      {/* VoiceBanner only shows when connected and no settings are open */}
-      {isConnected && !isAnySettingsOpen && <VoiceBanner />}
-      
-      {/* UserBanner is always visible */}
-      <UserBanner onSettingsChange={setIsUserSettingsOpen} />
-    </Box>
+    <Portal>
+      <Box className={css.VoicePanel} direction="Column">
+        {/* VoiceBanner only shows when connected and no settings are open */}
+        {isConnected && !isAnySettingsOpen && <VoiceBanner />}
+
+        {/* UserBanner is always visible */}
+        <UserBanner onSettingsChange={setIsUserSettingsOpen} />
+      </Box>
+    </Portal>
   );
 }
