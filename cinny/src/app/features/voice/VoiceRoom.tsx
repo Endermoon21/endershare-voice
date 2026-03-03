@@ -405,23 +405,45 @@ function DeviceAccordion({
   );
 }
 
+// Pop out icon
+const PopOutIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    <polyline points="15 3 21 3 21 9"/>
+    <line x1="10" y1="14" x2="21" y2="3"/>
+  </svg>
+);
+
 interface ParticipantTileProps {
   participant: VoiceParticipant;
   avatarUrl?: string;
   displayName: string;
+  isStreamTile?: boolean;
+  streamVideoElement?: HTMLVideoElement | null;
 }
 
-function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTileProps) {
+function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, streamVideoElement }: ParticipantTileProps) {
   const [showPopup, setShowPopup] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const { participantVolumes, getCameraElement } = useLiveKitContext();
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const volume = participantVolumes[participant.identity] ?? 1;
   const isLocalMuted = volume === 0;
   const tileColor = getColorForUser(participant.identity);
+  const hasVideo = participant.isCameraEnabled || isStreamTile;
 
-  // Attach camera video when participant has camera enabled
+  // Attach video (camera or stream)
   useEffect(() => {
-    if (participant.isCameraEnabled && videoContainerRef.current) {
+    if (!videoContainerRef.current) return;
+
+    if (isStreamTile && streamVideoElement) {
+      videoContainerRef.current.innerHTML = "";
+      streamVideoElement.style.width = "100%";
+      streamVideoElement.style.height = "100%";
+      streamVideoElement.style.objectFit = "contain";
+      streamVideoElement.style.borderRadius = "8px";
+      videoContainerRef.current.appendChild(streamVideoElement);
+    } else if (participant.isCameraEnabled) {
       const videoEl = getCameraElement(participant.identity);
       if (videoEl) {
         videoContainerRef.current.innerHTML = "";
@@ -431,27 +453,69 @@ function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTil
         videoEl.style.borderRadius = "8px";
         videoContainerRef.current.appendChild(videoEl);
       }
-    } else if (videoContainerRef.current) {
+    } else {
       videoContainerRef.current.innerHTML = "";
     }
-  }, [participant.isCameraEnabled, participant.identity, getCameraElement]);
+  }, [participant.isCameraEnabled, participant.identity, getCameraElement, isStreamTile, streamVideoElement]);
 
   const handleClick = () => {
-    if (!participant.isLocal) setShowPopup(true);
+    if (!participant.isLocal && !isStreamTile) setShowPopup(true);
+  };
+
+  const handleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoContainerRef.current?.querySelector("video");
+    if (video) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        video.requestFullscreen().catch(console.error);
+      }
+    }
+  };
+
+  const handlePip = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoContainerRef.current?.querySelector("video");
+    if (video && document.pictureInPictureEnabled) {
+      video.requestPictureInPicture().catch(console.error);
+    }
+  };
+
+  const handlePopOut = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoContainerRef.current?.querySelector("video");
+    if (video) {
+      const popout = window.open("", "_blank", "width=640,height=480,menubar=no,toolbar=no,location=no,status=no");
+      if (popout) {
+        popout.document.title = `${displayName}${isStreamTile ? "'s Stream" : "'s Camera"}`;
+        popout.document.body.style.margin = "0";
+        popout.document.body.style.background = "#000";
+        const clonedVideo = video.cloneNode(true) as HTMLVideoElement;
+        clonedVideo.style.width = "100%";
+        clonedVideo.style.height = "100%";
+        clonedVideo.style.objectFit = "contain";
+        popout.document.body.appendChild(clonedVideo);
+        clonedVideo.play().catch(console.error);
+      }
+    }
   };
 
   return (
     <div className={css.TileWrapper}>
       <div
         className={classNames(css.ParticipantTile, {
-          [css.TileClickable]: !participant.isLocal,
-          [css.ParticipantTileSpeaking]: participant.isSpeaking && !isLocalMuted,
+          [css.TileClickable]: !participant.isLocal && !isStreamTile,
+          [css.ParticipantTileSpeaking]: participant.isSpeaking && !isLocalMuted && !isStreamTile,
+          [css.StreamTile]: isStreamTile,
         })}
-        style={{ backgroundColor: participant.isCameraEnabled ? "#000" : tileColor }}
+        style={{ backgroundColor: hasVideo ? "#000" : tileColor }}
         onClick={handleClick}
+        onMouseEnter={() => hasVideo && setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}
       >
-        {participant.isCameraEnabled ? (
-          // Show camera video
+        {hasVideo ? (
+          // Show video (camera or stream)
           <div ref={videoContainerRef} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }} />
         ) : (
           // Show avatar
@@ -468,16 +532,38 @@ function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTil
           </div>
         )}
 
-        {/* Status icons - positioned in bottom right corner */}
+        {/* Video controls overlay */}
+        {hasVideo && showControls && (
+          <div className={css.TileVideoControls}>
+            <button className={css.TileControlBtn} onClick={handlePip} title="Picture in Picture">
+              <PipIcon />
+            </button>
+            <button className={css.TileControlBtn} onClick={handlePopOut} title="Pop Out">
+              <PopOutIcon />
+            </button>
+            <button className={css.TileControlBtn} onClick={handleFullscreen} title="Fullscreen">
+              <FullscreenIcon />
+            </button>
+          </div>
+        )}
+
+        {/* Activity badges - top left */}
+        <div className={css.TileActivityBadges}>
+          {isStreamTile && (
+            <span className={css.LiveBadgeSmall}>LIVE</span>
+          )}
+          {participant.isCameraEnabled && !isStreamTile && (
+            <span className={css.CameraBadge}>
+              <CameraSmallIcon />
+            </span>
+          )}
+        </div>
+
+        {/* Status icons - bottom right */}
         <div style={{ position: "absolute", bottom: "50px", right: "12px", display: "flex", gap: "4px" }}>
-          {participant.isScreenSharing && (
+          {participant.isScreenSharing && !isStreamTile && (
             <div className={classNames(css.TileStatusOverlay, css.TileStatusScreenShare)} style={{ position: "relative" }}>
               <ScreenShareSmallIcon />
-            </div>
-          )}
-          {participant.isCameraEnabled && (
-            <div className={classNames(css.TileStatusOverlay, css.TileStatusCamera)} style={{ position: "relative" }}>
-              <CameraSmallIcon />
             </div>
           )}
           {isLocalMuted ? (
@@ -492,8 +578,8 @@ function ParticipantTile({ participant, avatarUrl, displayName }: ParticipantTil
         </div>
 
         <div className={css.TileInfo}>
-          <span className={css.TileName}>{displayName}</span>
-          {participant.isLocal && <span className={css.TileYou}>(You)</span>}
+          <span className={css.TileName}>{displayName}{isStreamTile ? "'s stream" : ""}</span>
+          {participant.isLocal && !isStreamTile && <span className={css.TileYou}>(You)</span>}
         </div>
       </div>
       {showPopup && (
@@ -517,11 +603,9 @@ export function VoiceRoom() {
 
   const deviceSelection = useDeviceSelection(room);
 
-  const videoContainerRef = useRef<HTMLDivElement>(null);
   const muteButtonRef = useRef<HTMLDivElement>(null);
   const cameraButtonRef = useRef<HTMLDivElement>(null);
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
-  const [showStreamOverlay, setShowStreamOverlay] = useState(false);
   const [showStreamModal, setShowStreamModal] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
@@ -576,19 +660,6 @@ export function VoiceRoom() {
     fetchProfiles();
   }, [participants, mx, profileCache]);
 
-  useEffect(() => {
-    if (screenShareInfo && videoContainerRef.current) {
-      const videoEl = getScreenShareElement();
-      if (videoEl) {
-        videoContainerRef.current.innerHTML = "";
-        videoEl.className = css.ScreenShareVideo;
-        videoContainerRef.current.appendChild(videoEl);
-      }
-    } else if (videoContainerRef.current) {
-      videoContainerRef.current.innerHTML = "";
-    }
-  }, [screenShareInfo, getScreenShareElement]);
-
   const roomDisplayName = currentRoom ? currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1) : "Voice Channel";
   const qualityText = connectionQuality?.quality || "connecting";
   const getQualityClass = () => {
@@ -611,104 +682,56 @@ export function VoiceRoom() {
       </div>
 
       <div className={css.MainArea}>
-        {screenShareInfo ? (
-          <div 
-            className={css.ScreenShareSection}
-            onMouseEnter={() => setShowStreamOverlay(true)}
-            onMouseLeave={() => setShowStreamOverlay(false)}
-          >
-            <div ref={videoContainerRef} className={css.VideoContainer} />
-            
-            {/* Stream overlay with controls */}
-            <div className={classNames(css.StreamOverlay, { [css.StreamOverlayVisible]: showStreamOverlay })}>
-              {/* Top bar - streamer info */}
-              <div className={css.StreamTopBar}>
-                <div className={css.StreamerBadge}>
-                  <div className={css.StreamerAvatar}>
-                    {profileCache[screenShareInfo.participantIdentity]?.avatarUrl ? (
-                      <img src={profileCache[screenShareInfo.participantIdentity]?.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : (
-                      (profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName).charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <span className={css.StreamerName}>
-                    {profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}
-                  </span>
-                  <span className={css.LiveBadge}>LIVE</span>
-                </div>
-                
-                <div className={css.ViewerCount}>
-                  <UsersIcon />
-                  {participants.length}
-                </div>
-              </div>
-              
-              {/* Bottom bar - controls */}
-              <div className={css.StreamBottomBar}>
-                <div />
-                <div className={css.StreamControls}>
-                  <button 
-                    className={css.StreamControlBtn} 
-                    onClick={() => {
-                      const video = videoContainerRef.current?.querySelector("video");
-                      if (video && document.pictureInPictureEnabled) {
-                        video.requestPictureInPicture().catch(console.error);
-                      }
+        {(() => {
+          // Filter out ingress users (identity ending with -stream)
+          const visibleParticipants = participants.filter(p => !p.identity.endsWith("-stream"));
+
+          // Get stream video element if someone is screen sharing
+          const streamVideoEl = screenShareInfo ? getScreenShareElement() : null;
+
+          if (visibleParticipants.length > 0 || screenShareInfo) {
+            return (
+              <div className={css.ParticipantGrid}>
+                {/* Show stream as a tile if someone is sharing */}
+                {screenShareInfo && (
+                  <ParticipantTile
+                    key={`stream-${screenShareInfo.participantIdentity}`}
+                    participant={{
+                      identity: screenShareInfo.participantIdentity,
+                      name: screenShareInfo.participantName,
+                      isSpeaking: false,
+                      isMuted: false,
+                      isLocal: false,
+                      isCameraEnabled: false,
+                      isScreenSharing: true,
+                      volume: 1,
                     }}
-                    title="Picture in Picture"
-                  >
-                    <PipIcon />
-                  </button>
-                  <button 
-                    className={css.StreamControlBtn}
-                    onClick={() => {
-                      if (videoContainerRef.current) {
-                        if (document.fullscreenElement) {
-                          document.exitFullscreen();
-                        } else {
-                          videoContainerRef.current.requestFullscreen().catch(console.error);
-                        }
-                      }
-                    }}
-                    title="Fullscreen"
-                  >
-                    <FullscreenIcon />
-                  </button>
-                </div>
+                    avatarUrl={profileCache[screenShareInfo.participantIdentity]?.avatarUrl}
+                    displayName={profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}
+                    isStreamTile
+                    streamVideoElement={streamVideoEl}
+                  />
+                )}
+                {/* Show regular participants */}
+                {visibleParticipants.map((p) => (
+                  <ParticipantTile
+                    key={p.identity}
+                    participant={p}
+                    avatarUrl={profileCache[p.identity]?.avatarUrl}
+                    displayName={profileCache[p.identity]?.displayName || p.name}
+                  />
+                ))}
               </div>
+            );
+          }
+
+          return (
+            <div className={css.EmptyState}>
+              <VoiceChannelIcon />
+              <span className={css.EmptyText}>Waiting for others to join...</span>
             </div>
-            
-            {/* Viewer thumbnails at bottom */}
-            <div className={css.ViewerThumbnails}>
-              {participants.filter(p => !p.identity.endsWith("-stream")).map((p) => (
-                <div 
-                  key={p.identity} 
-                  className={classNames(css.ViewerThumb, {
-                    [css.ViewerThumbSpeaking]: p.isSpeaking,
-                  })}
-                  title={profileCache[p.identity]?.displayName || p.name}
-                >
-                  {profileCache[p.identity]?.avatarUrl ? (
-                    <img src={profileCache[p.identity]?.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    (profileCache[p.identity]?.displayName || p.name).charAt(0).toUpperCase()
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : participants.length > 0 ? (
-          <div className={css.ParticipantGrid}>
-            {participants.map((p) => (
-              <ParticipantTile key={p.identity} participant={p} avatarUrl={profileCache[p.identity]?.avatarUrl} displayName={profileCache[p.identity]?.displayName || p.name} />
-            ))}
-          </div>
-        ) : (
-          <div className={css.EmptyState}>
-            <VoiceChannelIcon />
-            <span className={css.EmptyText}>Waiting for others to join...</span>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <div className={css.ControlBar}>

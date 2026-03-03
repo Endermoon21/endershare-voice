@@ -39,7 +39,7 @@ function getDisplayName(identity: string, fallbackName: string): string {
 export function VoiceChannelSection() {
   const mx = useMatrixClient();
   const { isConnected, currentRoom, participants, connect, setShowVoiceView } = useLiveKitContext();
-  const { formattedDuration } = useCallDuration(isConnected);
+  const { formatted: formattedDuration } = useCallDuration(isConnected);
   const [rooms, setRooms] = useState<VoiceRoom[]>([]);
   const [roomParticipants, setRoomParticipants] = useState<Record<string, Array<{ identity: string; name: string }>>>({});
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
@@ -184,17 +184,20 @@ export function VoiceChannelSection() {
   }, [menuRoom, handleCloseMenu]);
 
   // Get participants to display for a room (from LiveKit if connected, otherwise from server)
+  // Filter out ingress users (identity ending with -stream)
   const getDisplayParticipants = useCallback((roomName: string, isCurrentRoom: boolean) => {
     if (isCurrentRoom && participants.length > 0) {
-      return participants;
+      return participants.filter(p => !p.identity.endsWith('-stream'));
     }
     // Show server-reported participants for rooms we're not in
     const serverParticipants = roomParticipants[roomName] || [];
-    return serverParticipants.map(p => ({
-      ...p,
-      isSpeaking: false,
-      isMuted: false,
-    }));
+    return serverParticipants
+      .filter(p => !p.identity.endsWith('-stream'))
+      .map(p => ({
+        ...p,
+        isSpeaking: false,
+        isMuted: false,
+      }));
   }, [participants, roomParticipants]);
 
   return (
@@ -239,17 +242,11 @@ export function VoiceChannelSection() {
                           {room.displayName}
                         </Text>
                       </Box>
-                      {/* Show call duration for current room, participant count for others */}
-                      {!isHovered && (
-                        isCurrentRoom ? (
-                          <Text size="T200" className={css.CallDuration}>
-                            {formattedDuration}
-                          </Text>
-                        ) : room.numParticipants > 0 ? (
-                          <Text size="T200" className={css.ParticipantCount}>
-                            {room.numParticipants}
-                          </Text>
-                        ) : null
+                      {/* Show call duration for current room */}
+                      {!isHovered && isCurrentRoom && (
+                        <Text size="T200" className={css.CallDuration}>
+                          {formattedDuration}
+                        </Text>
                       )}
                       {isHovered && (
                         <IconButton

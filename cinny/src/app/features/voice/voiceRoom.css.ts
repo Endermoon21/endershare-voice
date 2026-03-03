@@ -829,3 +829,75 @@ export const ControlBtnDropdownArrow = style({
   transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}`,
   ":hover": { backgroundColor: "#36383f", color: "#dbdee1" },
 });
+
+// Video tile controls overlay (fullscreen, pip, popout)
+export const TileVideoControls = style({
+  position: "absolute",
+  top: "8px",
+  right: "8px",
+  display: "flex",
+  gap: "4px",
+  zIndex: 5,
+});
+
+export const TileControlBtn = style({
+  width: "32px",
+  height: "32px",
+  borderRadius: "4px",
+  border: "none",
+  backgroundColor: "rgba(0, 0, 0, 0.6)",
+  color: "#fff",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "background-color 0.15s ease, transform 0.1s ease",
+  backdropFilter: "blur(4px)",
+  ":hover": {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  ":active": {
+    transform: "scale(0.95)",
+  },
+});
+
+// Activity badges container (top left)
+export const TileActivityBadges = style({
+  position: "absolute",
+  top: "8px",
+  left: "8px",
+  display: "flex",
+  gap: "4px",
+  zIndex: 4,
+});
+
+// Small LIVE badge for stream tiles
+export const LiveBadgeSmall = style({
+  backgroundColor: "#ed4245",
+  color: "#fff",
+  padding: "3px 8px",
+  borderRadius: "4px",
+  fontSize: "11px",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  boxShadow: "0 2px 8px rgba(237, 66, 69, 0.4)",
+});
+
+// Camera badge for users with camera on
+export const CameraBadge = style({
+  backgroundColor: "rgba(35, 165, 90, 0.9)",
+  color: "#fff",
+  padding: "4px 6px",
+  borderRadius: "4px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 2px 8px rgba(35, 165, 90, 0.4)",
+});
+
+// Stream tile style (slightly different from regular tiles)
+export const StreamTile = style({
+  aspectRatio: "16 / 9",
+  minHeight: "200px",
+});

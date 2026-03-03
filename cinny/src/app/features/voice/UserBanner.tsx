@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback } from 'react';
 import classNames from 'classnames';
 import { useLiveKitContext } from './LiveKitContext';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { useCallDuration } from './useCallDuration';
 import { useDeviceSelection } from './useDeviceSelection';
 import { DeviceSelector } from './DeviceSelector';
 import { UserProfilePopup } from './UserProfilePopup';
@@ -84,7 +83,6 @@ export function UserBanner({ onSettingsChange }: UserBannerProps) {
     room,
   } = useLiveKitContext();
 
-  const { formatted: callDuration } = useCallDuration(isConnected);
   const deviceSelection = useDeviceSelection(room);
 
   const [showProfilePopup, setShowProfilePopup] = useState(false);
@@ -165,7 +163,7 @@ export function UserBanner({ onSettingsChange }: UserBannerProps) {
               {isConnected ? (
                 <>
                   <VoiceConnectedIcon />
-                  {roomDisplayName} - {callDuration}
+                  {roomDisplayName}
                 </>
               ) : (
                 'Online'
