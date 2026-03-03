@@ -16,6 +16,15 @@ import {
   MenuItem,
   RectCords,
   config,
+  Modal,
+  Overlay,
+  OverlayBackdrop,
+  OverlayCenter,
+  IconButton,
+  Input,
+  Button,
+  Scroll,
+  color,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import classNames from 'classnames';
@@ -377,33 +386,81 @@ function AddSpaceButton({ item }: { item: HierarchyItem }) {
 }
 
 
+const BITRATE_OPTIONS = [
+  { value: 8000, label: '8 kbps' },
+  { value: 16000, label: '16 kbps' },
+  { value: 32000, label: '32 kbps' },
+  { value: 64000, label: '64 kbps (Default)' },
+  { value: 96000, label: '96 kbps' },
+  { value: 128000, label: '128 kbps' },
+  { value: 256000, label: '256 kbps' },
+  { value: 384000, label: '384 kbps' },
+  { value: 510000, label: '510 kbps' },
+];
+
 function AddVoiceChannelButton() {
   const mx = useMatrixClient();
   const { connect, setShowVoiceView } = useLiveKitContext();
   const [showModal, setShowModal] = useState(false);
-  const [channelName, setChannelName] = useState("");
+  const [channelName, setChannelName] = useState('');
+  const [bitrate, setBitrate] = useState(64000);
+  const [userLimit, setUserLimit] = useState(0);
   const [creating, setCreating] = useState(false);
-  const userId = mx.getUserId() || "";
+  const [error, setError] = useState<string | null>(null);
+  const userId = mx.getUserId() || '';
+
+  const handleClose = () => {
+    setShowModal(false);
+    setChannelName('');
+    setBitrate(64000);
+    setUserLimit(0);
+    setError(null);
+  };
 
   const handleCreate = async () => {
     if (!channelName.trim()) return;
     setCreating(true);
-    const name = channelName.trim().toLowerCase().replace(/\s+/g, "-");
+    setError(null);
+    const name = channelName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const displayName = channelName.trim();
     try {
-      await fetch("https://token.endershare.org/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, displayName }),
+      const response = await fetch('https://token.endershare.org/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, displayName, bitrate, userLimit }),
       });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create channel');
+      }
       await connect(name, userId);
       setShowVoiceView(true);
+      handleClose();
     } catch (e) {
-      console.error("Failed to create voice channel:", e);
+      setError((e as Error).message);
+      setCreating(false);
     }
-    setShowModal(false);
-    setChannelName("");
-    setCreating(false);
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: '10px 12px',
+    borderRadius: config.radii.R300,
+    border: 'none',
+    backgroundColor: color.Background.Container,
+    color: color.Surface.OnContainer,
+    fontSize: '14px',
+    cursor: 'pointer',
+    width: '100%',
+    outline: 'none',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '12px',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.02em',
+    color: color.Secondary.Main,
+    marginBottom: '8px',
   };
 
   return (
@@ -417,59 +474,145 @@ function AddVoiceChannelButton() {
         <Text size="B300">Add Voice Channel</Text>
       </Chip>
       {showModal && (
-        <Box
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={() => setShowModal(false)}
-        >
-          <Box
-            direction="Column"
-            gap="300"
-            style={{
-              backgroundColor: "var(--bg-surface)",
-              padding: config.space.S400,
-              borderRadius: config.radii.R400,
-              minWidth: "300px",
-            }}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-          >
-            <Text size="H4">Create Voice Channel</Text>
-            <input
-              type="text"
-              placeholder="Channel name"
-              value={channelName}
-              onChange={(e) => setChannelName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              autoFocus
-              style={{
-                padding: "8px 12px",
-                borderRadius: "4px",
-                border: "1px solid var(--bg-surface-border)",
-                backgroundColor: "var(--bg-surface-low)",
-                color: "inherit",
-                fontSize: "14px",
+        <Overlay open backdrop={<OverlayBackdrop />}>
+          <OverlayCenter>
+            <FocusTrap
+              focusTrapOptions={{
+                initialFocus: false,
+                clickOutsideDeactivates: true,
+                onDeactivate: handleClose,
+                escapeDeactivates: stopPropagation,
               }}
-            />
-            <Box gap="200" justifyContent="End">
-              <Chip variant="SurfaceVariant" radii="Pill" onClick={() => setShowModal(false)}>
-                <Text size="B300">Cancel</Text>
-              </Chip>
-              <Chip variant="Primary" radii="Pill" onClick={handleCreate} disabled={creating || !channelName.trim()}>
-                <Text size="B300">{creating ? "Creating..." : "Create"}</Text>
-              </Chip>
-            </Box>
-          </Box>
-        </Box>
+            >
+              <Modal
+                variant="Surface"
+                style={{
+                  width: '420px',
+                  maxWidth: '90vw',
+                  maxHeight: '85vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {/* Header */}
+                <Box
+                  shrink="No"
+                  alignItems="Center"
+                  justifyContent="SpaceBetween"
+                  style={{
+                    padding: config.space.S400,
+                    borderBottom: `1px solid ${color.Surface.ContainerLine}`,
+                  }}
+                >
+                  <Text size="H4">Create Voice Channel</Text>
+                  <IconButton onClick={handleClose} size="300" variant="Surface">
+                    <Icon src={Icons.Cross} size="100" />
+                  </IconButton>
+                </Box>
+
+                {/* Content */}
+                <Scroll hideTrack visibility="Hover" style={{ flexGrow: 1 }}>
+                  <Box direction="Column" gap="500" style={{ padding: config.space.S400 }}>
+                    {/* Channel Name */}
+                    <Box direction="Column">
+                      <Text style={labelStyle}>Channel Name</Text>
+                      <Input
+                        variant="Background"
+                        size="400"
+                        radii="300"
+                        value={channelName}
+                        onChange={(e) => setChannelName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !creating && channelName.trim() && handleCreate()}
+                        placeholder="Enter channel name"
+                        autoFocus
+                      />
+                    </Box>
+
+                    {/* Bitrate */}
+                    <Box direction="Column">
+                      <Text style={labelStyle}>Bitrate</Text>
+                      <Box
+                        as="select"
+                        value={bitrate}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBitrate(parseInt(e.target.value))}
+                        style={selectStyle}
+                      >
+                        {BITRATE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </Box>
+                      <Text size="T200" style={{ color: color.Secondary.Main, marginTop: '4px' }}>
+                        Higher bitrate = better quality, more bandwidth
+                      </Text>
+                    </Box>
+
+                    {/* User Limit */}
+                    <Box direction="Column">
+                      <Text style={labelStyle}>User Limit</Text>
+                      <Box alignItems="Center" gap="300">
+                        <input
+                          type="range"
+                          min="0"
+                          max="99"
+                          value={userLimit}
+                          onChange={(e) => setUserLimit(parseInt(e.target.value))}
+                          style={{
+                            flex: 1,
+                            accentColor: color.Primary.Main,
+                            height: '6px',
+                          }}
+                        />
+                        <Text
+                          size="T300"
+                          style={{
+                            minWidth: '80px',
+                            textAlign: 'center',
+                            padding: '6px 12px',
+                            backgroundColor: color.Background.Container,
+                            borderRadius: config.radii.R300,
+                          }}
+                        >
+                          {userLimit === 0 ? 'No limit' : userLimit}
+                        </Text>
+                      </Box>
+                    </Box>
+
+                    {error && (
+                      <Text style={{ color: color.Critical.Main }} size="T200">
+                        {error}
+                      </Text>
+                    )}
+                  </Box>
+                </Scroll>
+
+                {/* Footer */}
+                <Box
+                  shrink="No"
+                  alignItems="Center"
+                  justifyContent="End"
+                  gap="200"
+                  style={{
+                    padding: config.space.S400,
+                    borderTop: `1px solid ${color.Surface.ContainerLine}`,
+                  }}
+                >
+                  <Button variant="Secondary" size="400" onClick={handleClose}>
+                    <Text size="B400">Cancel</Text>
+                  </Button>
+                  <Button
+                    variant="Primary"
+                    size="400"
+                    onClick={handleCreate}
+                    disabled={creating || !channelName.trim()}
+                    before={creating ? <Spinner size="100" variant="Primary" fill="Solid" /> : undefined}
+                  >
+                    <Text size="B400">{creating ? 'Creating...' : 'Create'}</Text>
+                  </Button>
+                </Box>
+              </Modal>
+            </FocusTrap>
+          </OverlayCenter>
+        </Overlay>
       )}
     </>
   );
