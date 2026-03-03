@@ -140,9 +140,6 @@ export const DropIndicatorInto = style({
 
 // Channel icons
 export const ChannelIcon = style({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
   width: '20px',
   height: '20px',
   color: color.Surface.OnContainer,
