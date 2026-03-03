@@ -35,7 +35,7 @@ export function DeviceSelector({
     position: 'fixed',
     bottom: window.innerHeight - anchorRect.top + 8,
     left: anchorRect.left,
-    zIndex: 50,
+    zIndex: 5,
   } : {};
 
   const handleSelect = (deviceId: string) => {

@@ -46,8 +46,8 @@ export const MainArea = style({
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  padding: "16px 8px",
-  overflow: "hidden",
+  padding: "16px",
+  overflow: "auto",
   minHeight: 0,
   backgroundColor: "#1e1f22",
   gap: "8px",
@@ -70,14 +70,13 @@ export const QualityGood = style({ backgroundColor: "rgba(35, 165, 90, 0.2)", co
 export const QualityPoor = style({ backgroundColor: "rgba(250, 166, 26, 0.2)", color: "#f0b232" });
 export const QualityBad = style({ backgroundColor: "rgba(242, 63, 67, 0.2)", color: "#f23f43" });
 
-// Discord-style: grid that fills available space with constraints
+// Discord-style: vertical stack of landscape tiles
 export const ParticipantGrid = style({
   display: "flex",
   flexDirection: "column",
   gap: "8px",
   width: "100%",
-  maxWidth: "800px",
-  maxHeight: "100%",
+  maxWidth: "700px",
 });
 
 // Discord-style: large landscape tile with colored background
@@ -88,9 +87,7 @@ export const ParticipantTile = style({
   position: "relative",
   borderRadius: "8px",
   width: "100%",
-  minHeight: "120px",
-  maxHeight: "300px",
-  flex: 1,
+  aspectRatio: "16 / 9",
   backgroundColor: "#5865f2", // Default Discord blurple, will be overridden per-user
   transition: `background-color 0.15s ${discordEase}, box-shadow 0.15s ${discordEase}`,
   cursor: "default",
@@ -333,7 +330,7 @@ export const ParticipantPopup = style({
   padding: "12px",
   minWidth: "200px",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
-  zIndex: 100,
+  zIndex: 10,
   border: "1px solid rgba(255, 255, 255, 0.1)",
 });
 
@@ -469,9 +466,6 @@ export const TileWrapper = style({
   position: "relative",
   display: "flex",
   width: "100%",
-  flex: 1,
-  minHeight: "120px",
-  maxHeight: "300px",
 });
 
 // Legacy exports
@@ -680,7 +674,7 @@ export const DeviceMenuWrapper = style({
   minWidth: "280px",
   maxWidth: "350px",
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
-  zIndex: 50,
+  zIndex: 5,
   border: "1px solid rgba(255, 255, 255, 0.1)",
   overflow: "hidden",
   animation: `${fadeSlideIn} 0.15s ${discordEaseOut}`,

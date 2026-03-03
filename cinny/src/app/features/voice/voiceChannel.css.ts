@@ -134,7 +134,7 @@ export const SettingsMenu = style({
   position: 'absolute',
   top: '100%',
   right: 0,
-  zIndex: 100,
+  zIndex: 10,
   minWidth: '180px',
   backgroundColor: color.Surface.Container,
   borderRadius: config.radii.R400,
@@ -179,7 +179,7 @@ export const ModalOverlay = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 100, // Below app modals
+  zIndex: 10, // Well below app modals (folds uses 9999)
 });
 
 export const ModalContent = style({

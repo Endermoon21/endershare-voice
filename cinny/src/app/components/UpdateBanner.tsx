@@ -67,22 +67,22 @@ export function UpdateBanner() {
 
       setState(s => ({ ...s, status: 'ready' }));
 
-      // Exit app immediately to let installer run without file conflicts
-      // The installer will relaunch the app after completion
-      setTimeout(async () => {
+      // Exit app IMMEDIATELY to let installer run without file conflicts
+      // No delay - exit right away before NSIS starts extracting
+      try {
+        if (tauri.process?.exit) {
+          await tauri.process.exit(0);
+        }
+      } catch (e) {
+        // If exit fails, try relaunch as fallback
         try {
-          if (tauri.process?.exit) {
-            await tauri.process.exit(0);
-          } else if (tauri.process?.relaunch) {
+          if (tauri.process?.relaunch) {
             await tauri.process.relaunch();
-          } else {
-            setState(s => ({ ...s, status: 'restart-manual' }));
           }
-        } catch (e) {
-          console.error('[Update] Exit/relaunch failed:', e);
+        } catch (e2) {
           setState(s => ({ ...s, status: 'restart-manual' }));
         }
-      }, 500);
+      }
 
     } catch (e: any) {
       console.error('[Update] Install failed:', e);

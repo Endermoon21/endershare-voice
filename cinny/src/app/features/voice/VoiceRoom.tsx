@@ -506,11 +506,13 @@ export function VoiceRoom() {
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const muteButtonRef = useRef<HTMLDivElement>(null);
+  const cameraButtonRef = useRef<HTMLDivElement>(null);
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
   const [showStreamOverlay, setShowStreamOverlay] = useState(false);
   const [showStreamModal, setShowStreamModal] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
+  const [showCameraMenu, setShowCameraMenu] = useState(false);
 
   // Check streaming status periodically
   useEffect(() => {
@@ -698,13 +700,75 @@ export function VoiceRoom() {
 
       <div className={css.ControlBar}>
         <div className={css.ControlGroup}>
-          <button
-            className={classNames(css.ControlBtn, { [css.ControlBtnActive]: !isCameraEnabled })}
-            onClick={toggleCamera}
-            title={isCameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
-          >
-            {isCameraEnabled ? <VideoIcon /> : <VideoOffIcon />}
-          </button>
+          {/* Camera button with device selector dropdown */}
+          <div ref={cameraButtonRef} className={css.ControlBtnWithDropdown}>
+            <button
+              className={css.ControlBtnMain}
+              onClick={toggleCamera}
+              title={isCameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
+            >
+              {isCameraEnabled ? <VideoIcon /> : <VideoOffIcon />}
+            </button>
+            <button
+              className={css.ControlBtnDropdownArrow}
+              onClick={() => setShowCameraMenu(!showCameraMenu)}
+              title="Select camera"
+            >
+              <ChevronDownIcon />
+            </button>
+
+            {showCameraMenu && (
+              <FocusTrap
+                focusTrapOptions={{
+                  initialFocus: false,
+                  clickOutsideDeactivates: true,
+                  onDeactivate: () => setShowCameraMenu(false),
+                  escapeDeactivates: true,
+                }}
+              >
+                <div className={css.DeviceMenuWrapper}>
+                  <div className={css.DeviceSection}>
+                    <div className={css.DeviceSectionHeader}>
+                      <span className={css.DeviceSectionLabel}>Camera</span>
+                    </div>
+                    <div className={classNames(css.DeviceList, css.DeviceListOpen)}>
+                      {deviceSelection.videoDevices.length === 0 ? (
+                        <div className={css.DeviceOption}>
+                          <span className={css.DeviceOptionLabel}>No cameras found</span>
+                        </div>
+                      ) : (
+                        deviceSelection.videoDevices.map((device) => (
+                          <div
+                            key={device.deviceId}
+                            className={classNames(css.DeviceOption, {
+                              [css.DeviceOptionActive]: device.deviceId === deviceSelection.activeVideoId,
+                            })}
+                            onClick={() => {
+                              deviceSelection.switchVideo(device.deviceId);
+                              setShowCameraMenu(false);
+                            }}
+                            role="menuitem"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                deviceSelection.switchVideo(device.deviceId);
+                                setShowCameraMenu(false);
+                              }
+                            }}
+                          >
+                            <span className={css.DeviceOptionCheck}>
+                              {device.deviceId === deviceSelection.activeVideoId && <CheckIcon />}
+                            </span>
+                            <span className={css.DeviceOptionLabel}>{device.label}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </FocusTrap>
+            )}
+          </div>
 
           {/* Mute button with device selector dropdown */}
           <div ref={muteButtonRef} className={css.ControlBtnWithDropdown}>

@@ -8,7 +8,7 @@ export const CallViewOverlay = style({
   right: 0,
   bottom: 0,
   backgroundColor: 'rgba(0, 0, 0, 0.85)',
-  zIndex: 100, // Below app modals
+  zIndex: 10, // Well below app modals (folds uses 9999)
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

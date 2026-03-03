@@ -109,7 +109,7 @@ export function PingVisualizer() {
             top: tooltipPos.top,
             left: tooltipPos.left,
             transform: 'translateX(-50%)',
-            zIndex: 50,
+            zIndex: 5,
             pointerEvents: 'none',
           }}
         >
