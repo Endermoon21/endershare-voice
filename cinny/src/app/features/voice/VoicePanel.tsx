@@ -16,14 +16,19 @@ export function VoicePanel() {
   const spaceSettingsState = useSpaceSettingsState();
   const isAnySettingsOpen = !!roomSettingsState || !!spaceSettingsState || isUserSettingsOpen;
 
+  // Hide entire panel when any settings/modal is open to avoid z-index conflicts
+  if (isAnySettingsOpen) {
+    return null;
+  }
+
   // Render via Portal to ensure proper z-index stacking with folds modals
   return (
     <Portal>
       <Box className={css.VoicePanel} direction="Column">
-        {/* VoiceBanner only shows when connected and no settings are open */}
-        {isConnected && !isAnySettingsOpen && <VoiceBanner />}
+        {/* VoiceBanner only shows when connected */}
+        {isConnected && <VoiceBanner />}
 
-        {/* UserBanner is always visible */}
+        {/* UserBanner */}
         <UserBanner onSettingsChange={setIsUserSettingsOpen} />
       </Box>
     </Portal>
