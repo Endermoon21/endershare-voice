@@ -51,7 +51,7 @@ export function UpdateBanner() {
 
     try {
       const tauri = (window as any).__TAURI__;
-      
+
       let unlisten: (() => void) | undefined;
       if (tauri.event?.listen) {
         unlisten = await tauri.event.listen('tauri://update-download-progress', (event: any) => {
@@ -64,33 +64,25 @@ export function UpdateBanner() {
 
       await tauri.updater.installUpdate();
       if (unlisten) unlisten();
-      
+
       setState(s => ({ ...s, status: 'ready' }));
-      
-      // Try to relaunch, but if it fails or takes too long, show manual restart message
+
+      // Exit app immediately to let installer run without file conflicts
+      // The installer will relaunch the app after completion
       setTimeout(async () => {
         try {
-          if (tauri.process?.relaunch) {
+          if (tauri.process?.exit) {
+            await tauri.process.exit(0);
+          } else if (tauri.process?.relaunch) {
             await tauri.process.relaunch();
           } else {
-            // No relaunch available, ask user to restart manually
             setState(s => ({ ...s, status: 'restart-manual' }));
           }
         } catch (e) {
-          console.error('[Update] Relaunch failed:', e);
+          console.error('[Update] Exit/relaunch failed:', e);
           setState(s => ({ ...s, status: 'restart-manual' }));
         }
-      }, 1500);
-
-      // If still showing after 5 seconds, switch to manual restart message
-      setTimeout(() => {
-        setState(s => {
-          if (s.status === 'ready') {
-            return { ...s, status: 'restart-manual' };
-          }
-          return s;
-        });
-      }, 5000);
+      }, 500);
 
     } catch (e: any) {
       console.error('[Update] Install failed:', e);
