@@ -196,25 +196,22 @@ export const MediaBtnActive = style({
 });
 
 // ===========================================
-// USER BANNER (Always visible)
+// USER BANNER (Always visible - full width layout)
 // ===========================================
 export const UserBanner = style({
   display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '8px',
+  flexDirection: 'column',
   backgroundColor: butter.background,
+  width: '100%',
 });
 
+// Profile row - clickable area with user info
 export const UserInfo = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
-  flex: 1,
-  minWidth: 0,
+  gap: '10px',
+  padding: '10px 12px',
   cursor: 'pointer',
-  padding: '4px',
-  borderRadius: '4px',
   transition: `background-color 0.15s ${discordEase}`,
   ':hover': {
     backgroundColor: 'rgba(255, 251, 222, 0.06)',
@@ -298,12 +295,15 @@ export const UserStatusConnected = style({
 });
 
 // ===========================================
-// CONTROL BUTTONS
+// CONTROL BUTTONS (full width row)
 // ===========================================
 export const UserControls = style({
   display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  padding: '6px 8px',
+  borderTop: `1px solid ${butter.border}`,
   gap: '4px',
-  flexShrink: 0,
 });
 
 // Discord-style control buttons with proper transitions
