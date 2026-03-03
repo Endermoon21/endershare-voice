@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
+import { Portal } from 'folds';
 import { useLiveKitContext } from './LiveKitContext';
 import { usePingHistory, getPingColor, getPingQuality, PING_COLORS } from './usePingHistory';
 import * as css from './voicePanel.css';
@@ -128,11 +129,12 @@ export function ConnectionStatsModal({ onClose }: ConnectionStatsModalProps) {
   }[quality];
 
   return (
-    <div
-      className={css.StatsModalOverlay}
-      onClick={onClose}
-    >
-      <FocusTrap
+    <Portal>
+      <div
+        className={css.StatsModalOverlay}
+        onClick={onClose}
+      >
+        <FocusTrap
         focusTrapOptions={{
           initialFocus: false,
           clickOutsideDeactivates: true,
@@ -241,8 +243,9 @@ export function ConnectionStatsModal({ onClose }: ConnectionStatsModalProps) {
               <span>&gt;200ms</span>
             </div>
           </div>
-        </div>
-      </FocusTrap>
-    </div>
+          </div>
+        </FocusTrap>
+      </div>
+    </Portal>
   );
 }

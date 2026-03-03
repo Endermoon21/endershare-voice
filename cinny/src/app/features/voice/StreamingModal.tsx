@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import FocusTrap from "focus-trap-react";
+import { Portal } from "folds";
 import { useLiveKitContext } from "./LiveKitContext";
 import {
   isNativeStreamingAvailable,
@@ -386,16 +387,17 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
   const windows = sources.filter(s => s.source_type === "window");
 
   return (
-    <div className={css.StreamModalOverlay} onClick={onClose}>
-      <FocusTrap
-        focusTrapOptions={{
-          initialFocus: false,
-          clickOutsideDeactivates: true,
-          onDeactivate: onClose,
-          escapeDeactivates: true,
-        }}
-      >
-        <div className={css.StreamModal} onClick={(e) => e.stopPropagation()}>
+    <Portal>
+      <div className={css.StreamModalOverlay} onClick={onClose}>
+        <FocusTrap
+          focusTrapOptions={{
+            initialFocus: false,
+            clickOutsideDeactivates: true,
+            onDeactivate: onClose,
+            escapeDeactivates: true,
+          }}
+        >
+          <div className={css.StreamModal} onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className={css.StreamModalHeader}>
             <div className={css.StreamModalTitle}>
@@ -720,8 +722,9 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
               </button>
             </div>
           )}
-        </div>
-      </FocusTrap>
-    </div>
+          </div>
+        </FocusTrap>
+      </div>
+    </Portal>
   );
 }

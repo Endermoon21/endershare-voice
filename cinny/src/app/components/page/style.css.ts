@@ -56,7 +56,8 @@ export const PageNavContent = style({
   minHeight: '100%',
   padding: config.space.S200,
   paddingRight: 0,
-  paddingBottom: config.space.S700,
+  // Extra bottom padding to account for fixed VoicePanel overlay (140px)
+  paddingBottom: toRem(140),
 });
 
 export const PageHeader = recipe({

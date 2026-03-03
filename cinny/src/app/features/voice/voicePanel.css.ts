@@ -34,11 +34,28 @@ const discordEase = 'cubic-bezier(0.4, 0, 0.2, 1)';
 // ===========================================
 // VOICE PANEL CONTAINER
 // ===========================================
+// Spans both server sidebar (66px) and channel sidebar (256px) = 322px total
+// Responsive: On tablet/mobile, adjusts width accordingly
 export const VoicePanel = style({
+  position: 'fixed',
+  bottom: 0,
+  left: 0,
+  width: '322px', // Desktop: 66px (server sidebar) + 256px (channel sidebar)
   display: 'flex',
   flexDirection: 'column',
   backgroundColor: butter.surface,
   borderTop: `1px solid ${butter.border}`,
+  zIndex: 2, // Above sidebar content but below modals
+  // Tablet breakpoint (1124px and below) - just channel sidebar width
+  '@media': {
+    'screen and (max-width: 1124px)': {
+      width: '256px', // Channel sidebar only
+    },
+    // Mobile breakpoint (750px and below) - full width
+    'screen and (max-width: 750px)': {
+      width: '100%',
+    },
+  },
 });
 
 // ===========================================
@@ -49,7 +66,7 @@ export const VoiceBanner = style({
   flexDirection: 'column',
   backgroundColor: butter.background,
   borderBottom: `1px solid ${butter.border}`,
-  animation: `${fadeIn} 0.2s ${discordEase}`,
+  // Note: Removed animation to avoid creating stacking context that interferes with Portal z-index
 });
 
 export const VoiceBannerTop = style({
@@ -445,17 +462,12 @@ const modalFadeIn = keyframes({
 });
 
 export const RNNoiseModal = style({
-  position: 'absolute',
-  bottom: '100%',
-  right: '0',
-  marginBottom: '8px',
+  // Position is set inline via Portal for proper stacking
   width: '240px',
   backgroundColor: butter.surface,
   borderRadius: '8px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
   border: `1px solid ${butter.border}`,
-  zIndex: 5,
-  animation: `${modalFadeIn} 0.15s ${discordEase}`,
   overflow: 'hidden',
 });
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Portal } from 'folds';
 import { useLiveKitContext } from './LiveKitContext';
 import { usePingStats } from './usePingStats';
 import { ConnectionStatsModal } from './ConnectionStatsModal';
@@ -102,19 +103,21 @@ export function PingVisualizer() {
       </div>
 
       {showTooltip && (
-        <div
-          className={css.PingTooltip}
-          style={{
-            position: 'fixed',
-            top: tooltipPos.top,
-            left: tooltipPos.left,
-            transform: 'translateX(-50%)',
-            zIndex: 5,
-            pointerEvents: 'none',
-          }}
-        >
-          {pingStats.ping > 0 ? `${pingStats.ping}ms` : 'Connecting...'}
-        </div>
+        <Portal>
+          <div
+            className={css.PingTooltip}
+            style={{
+              position: 'fixed',
+              top: tooltipPos.top,
+              left: tooltipPos.left,
+              transform: 'translateX(-50%)',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          >
+            {pingStats.ping > 0 ? `${pingStats.ping}ms` : 'Connecting...'}
+          </div>
+        </Portal>
       )}
 
       {showModal && (

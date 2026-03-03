@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
+import { Portal } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import * as css from './voicePanel.css';
 
@@ -98,15 +99,16 @@ export function UserProfilePopup({ anchorRect, onClose }: UserProfilePopupProps)
   }, []);
 
   return (
-    <FocusTrap
-      focusTrapOptions={{
-        initialFocus: false,
-        clickOutsideDeactivates: true,
-        onDeactivate: onClose,
-        escapeDeactivates: true,
-      }}
-    >
-      <div className={css.ProfilePopup} style={style}>
+    <Portal>
+      <FocusTrap
+        focusTrapOptions={{
+          initialFocus: false,
+          clickOutsideDeactivates: true,
+          onDeactivate: onClose,
+          escapeDeactivates: true,
+        }}
+      >
+        <div className={css.ProfilePopup} style={style}>
         {/* Edit Profile */}
         <div
           className={css.ProfileItem}
@@ -203,7 +205,8 @@ export function UserProfilePopup({ anchorRect, onClose }: UserProfilePopupProps)
             <CopyIcon />
           </span>
         </div>
-      </div>
-    </FocusTrap>
+        </div>
+      </FocusTrap>
+    </Portal>
   );
 }

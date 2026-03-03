@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
+import { Portal } from 'folds';
 import { AudioDevice } from './useDeviceSelection';
 import * as css from './voicePanel.css';
 
@@ -44,43 +45,45 @@ export function DeviceSelector({
   };
 
   return (
-    <FocusTrap
-      focusTrapOptions={{
-        initialFocus: false,
-        clickOutsideDeactivates: true,
-        onDeactivate: onClose,
-        escapeDeactivates: true,
-      }}
-    >
-      <div ref={menuRef} className={css.DeviceMenu} style={style}>
-        <div className={css.DeviceMenuHeader}>
-          {type === 'input' ? 'Input Devices' : 'Output Devices'}
-        </div>
-        
-        {devices.length === 0 ? (
-          <div className={css.DeviceItem}>
-            <span className={css.DeviceItemLabel}>No devices found</span>
+    <Portal>
+      <FocusTrap
+        focusTrapOptions={{
+          initialFocus: false,
+          clickOutsideDeactivates: true,
+          onDeactivate: onClose,
+          escapeDeactivates: true,
+        }}
+      >
+        <div ref={menuRef} className={css.DeviceMenu} style={style}>
+          <div className={css.DeviceMenuHeader}>
+            {type === 'input' ? 'Input Devices' : 'Output Devices'}
           </div>
-        ) : (
-          devices.map((device) => (
-            <div
-              key={device.deviceId}
-              className={classNames(css.DeviceItem, {
-                [css.DeviceItemActive]: device.deviceId === activeDeviceId,
-              })}
-              onClick={() => handleSelect(device.deviceId)}
-              role="menuitem"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && handleSelect(device.deviceId)}
-            >
-              <span className={css.DeviceItemCheck}>
-                {device.deviceId === activeDeviceId && <CheckIcon />}
-              </span>
-              <span className={css.DeviceItemLabel}>{device.label}</span>
+
+          {devices.length === 0 ? (
+            <div className={css.DeviceItem}>
+              <span className={css.DeviceItemLabel}>No devices found</span>
             </div>
-          ))
-        )}
-      </div>
-    </FocusTrap>
+          ) : (
+            devices.map((device) => (
+              <div
+                key={device.deviceId}
+                className={classNames(css.DeviceItem, {
+                  [css.DeviceItemActive]: device.deviceId === activeDeviceId,
+                })}
+                onClick={() => handleSelect(device.deviceId)}
+                role="menuitem"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleSelect(device.deviceId)}
+              >
+                <span className={css.DeviceItemCheck}>
+                  {device.deviceId === activeDeviceId && <CheckIcon />}
+                </span>
+                <span className={css.DeviceItemLabel}>{device.label}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </FocusTrap>
+    </Portal>
   );
 }

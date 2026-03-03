@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import classNames from "classnames";
 import FocusTrap from "focus-trap-react";
+import { Portal } from "folds";
 import { useLiveKitContext, VoiceParticipant } from "./LiveKitContext";
 import { useMatrixClient } from "../../hooks/useMatrixClient";
 import { useDeviceSelection } from "./useDeviceSelection";
@@ -262,6 +263,7 @@ interface DeviceAccordionProps {
   onSelectInput: (deviceId: string) => void;
   onSelectOutput: (deviceId: string) => void;
   onClose: () => void;
+  anchorRect: DOMRect | null;
 }
 
 function DeviceAccordion({
@@ -272,6 +274,7 @@ function DeviceAccordion({
   onSelectInput,
   onSelectOutput,
   onClose,
+  anchorRect,
 }: DeviceAccordionProps) {
   const [inputExpanded, setInputExpanded] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
@@ -290,16 +293,25 @@ function DeviceAccordion({
     setOutputExpanded(false);
   };
 
+  // Calculate position above the anchor
+  const menuStyle: React.CSSProperties = anchorRect ? {
+    position: 'fixed',
+    bottom: window.innerHeight - anchorRect.top + 8,
+    left: anchorRect.left,
+    zIndex: 5,
+  } : {};
+
   return (
-    <FocusTrap
-      focusTrapOptions={{
-        initialFocus: false,
-        clickOutsideDeactivates: true,
-        onDeactivate: onClose,
-        escapeDeactivates: true,
-      }}
-    >
-      <div ref={menuRef} className={css.DeviceMenuWrapper}>
+    <Portal>
+      <FocusTrap
+        focusTrapOptions={{
+          initialFocus: false,
+          clickOutsideDeactivates: true,
+          onDeactivate: onClose,
+          escapeDeactivates: true,
+        }}
+      >
+        <div ref={menuRef} className={css.DeviceMenuWrapper} style={menuStyle}>
         {/* Input Devices Section */}
         <div className={css.DeviceSection}>
           <div
@@ -385,10 +397,11 @@ function DeviceAccordion({
                 </div>
               ))
             )}
+            </div>
           </div>
         </div>
-      </div>
-    </FocusTrap>
+      </FocusTrap>
+    </Portal>
   );
 }
 
@@ -717,56 +730,66 @@ export function VoiceRoom() {
               <ChevronDownIcon />
             </button>
 
-            {showCameraMenu && (
-              <FocusTrap
-                focusTrapOptions={{
-                  initialFocus: false,
-                  clickOutsideDeactivates: true,
-                  onDeactivate: () => setShowCameraMenu(false),
-                  escapeDeactivates: true,
-                }}
-              >
-                <div className={css.DeviceMenuWrapper}>
-                  <div className={css.DeviceSection}>
-                    <div className={css.DeviceSectionHeader}>
-                      <span className={css.DeviceSectionLabel}>Camera</span>
-                    </div>
-                    <div className={classNames(css.DeviceList, css.DeviceListOpen)}>
-                      {deviceSelection.videoDevices.length === 0 ? (
-                        <div className={css.DeviceOption}>
-                          <span className={css.DeviceOptionLabel}>No cameras found</span>
-                        </div>
-                      ) : (
-                        deviceSelection.videoDevices.map((device) => (
-                          <div
-                            key={device.deviceId}
-                            className={classNames(css.DeviceOption, {
-                              [css.DeviceOptionActive]: device.deviceId === deviceSelection.activeVideoId,
-                            })}
-                            onClick={() => {
-                              deviceSelection.switchVideo(device.deviceId);
-                              setShowCameraMenu(false);
-                            }}
-                            role="menuitem"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+            {showCameraMenu && cameraButtonRef.current && (
+              <Portal>
+                <FocusTrap
+                  focusTrapOptions={{
+                    initialFocus: false,
+                    clickOutsideDeactivates: true,
+                    onDeactivate: () => setShowCameraMenu(false),
+                    escapeDeactivates: true,
+                  }}
+                >
+                  <div
+                    className={css.DeviceMenuWrapper}
+                    style={{
+                      position: 'fixed',
+                      bottom: window.innerHeight - cameraButtonRef.current.getBoundingClientRect().top + 8,
+                      left: cameraButtonRef.current.getBoundingClientRect().left,
+                      zIndex: 5,
+                    }}
+                  >
+                    <div className={css.DeviceSection}>
+                      <div className={css.DeviceSectionHeader}>
+                        <span className={css.DeviceSectionLabel}>Camera</span>
+                      </div>
+                      <div className={classNames(css.DeviceList, css.DeviceListOpen)}>
+                        {deviceSelection.videoDevices.length === 0 ? (
+                          <div className={css.DeviceOption}>
+                            <span className={css.DeviceOptionLabel}>No cameras found</span>
+                          </div>
+                        ) : (
+                          deviceSelection.videoDevices.map((device) => (
+                            <div
+                              key={device.deviceId}
+                              className={classNames(css.DeviceOption, {
+                                [css.DeviceOptionActive]: device.deviceId === deviceSelection.activeVideoId,
+                              })}
+                              onClick={() => {
                                 deviceSelection.switchVideo(device.deviceId);
                                 setShowCameraMenu(false);
-                              }
-                            }}
-                          >
-                            <span className={css.DeviceOptionCheck}>
-                              {device.deviceId === deviceSelection.activeVideoId && <CheckIcon />}
-                            </span>
-                            <span className={css.DeviceOptionLabel}>{device.label}</span>
-                          </div>
-                        ))
-                      )}
+                              }}
+                              role="menuitem"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  deviceSelection.switchVideo(device.deviceId);
+                                  setShowCameraMenu(false);
+                                }
+                              }}
+                            >
+                              <span className={css.DeviceOptionCheck}>
+                                {device.deviceId === deviceSelection.activeVideoId && <CheckIcon />}
+                              </span>
+                              <span className={css.DeviceOptionLabel}>{device.label}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </FocusTrap>
+                </FocusTrap>
+              </Portal>
             )}
           </div>
 
@@ -796,6 +819,7 @@ export function VoiceRoom() {
                 onSelectInput={deviceSelection.switchInput}
                 onSelectOutput={deviceSelection.switchOutput}
                 onClose={() => setShowDeviceMenu(false)}
+                anchorRect={muteButtonRef.current?.getBoundingClientRect() || null}
               />
             )}
           </div>

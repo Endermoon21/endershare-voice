@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import classNames from 'classnames';
+import { Portal } from 'folds';
 import { useLiveKitContext } from './LiveKitContext';
 import { PingVisualizer } from './PingVisualizer';
 import { MediaControlsRow } from './MediaControlsRow';
@@ -72,46 +73,64 @@ export function VoiceBanner() {
     }
   }, [showModal]);
 
-  return (
-    <div className={css.VoiceBanner} style={{ position: 'relative' }}>
-      {/* Noise Suppression Modal */}
-      {showModal && (
-        <div ref={modalRef} className={css.RNNoiseModal}>
-          <div className={css.RNNoiseModalHeader}>
-            <span className={css.RNNoiseModalIcon}>
-              <NoiseFilterIcon />
-            </span>
-            <span className={css.RNNoiseModalTitle}>Noise Suppression</span>
-          </div>
-          <div className={css.RNNoiseModalContent}>
-            {/* Enable/Disable Toggle */}
-            <div className={css.RNNoiseModalRow}>
-              <div className={css.RNNoiseModalLabel}>
-                <span className={css.RNNoiseModalLabelText}>RNNoise</span>
-                <span className={css.RNNoiseModalLabelDesc}>AI-powered noise removal</span>
-              </div>
-              <button
-                className={classNames(css.ToggleSwitch, {
-                  [css.ToggleSwitchActive]: isNoiseFilterEnabled,
-                })}
-                onClick={handleToggle}
-                disabled={isNoiseFilterPending || !isNoiseFilterSupported}
-                style={{ opacity: (isNoiseFilterPending || !isNoiseFilterSupported) ? 0.5 : 1 }}
-              >
-                <span className={css.ToggleSwitchKnob} />
-              </button>
-            </div>
+  // Calculate modal position based on button
+  const getModalStyle = (): React.CSSProperties => {
+    if (!buttonRef.current) return {};
+    const rect = buttonRef.current.getBoundingClientRect();
+    return {
+      position: 'fixed',
+      bottom: window.innerHeight - rect.top + 8,
+      right: window.innerWidth - rect.right,
+      zIndex: 5,
+    };
+  };
 
-            {/* Not supported warning */}
-            {!isNoiseFilterSupported && (
+  return (
+    <div className={css.VoiceBanner}>
+      {/* Noise Suppression Modal - rendered via Portal */}
+      {showModal && (
+        <Portal>
+          <div
+            ref={modalRef}
+            className={css.RNNoiseModal}
+            style={getModalStyle()}
+          >
+            <div className={css.RNNoiseModalHeader}>
+              <span className={css.RNNoiseModalIcon}>
+                <NoiseFilterIcon />
+              </span>
+              <span className={css.RNNoiseModalTitle}>Noise Suppression</span>
+            </div>
+            <div className={css.RNNoiseModalContent}>
+              {/* Enable/Disable Toggle */}
               <div className={css.RNNoiseModalRow}>
-                <span className={css.RNNoiseModalLabelDesc} style={{ color: '#F04747' }}>
-                  Not supported in this browser
-                </span>
+                <div className={css.RNNoiseModalLabel}>
+                  <span className={css.RNNoiseModalLabelText}>RNNoise</span>
+                  <span className={css.RNNoiseModalLabelDesc}>AI-powered noise removal</span>
+                </div>
+                <button
+                  className={classNames(css.ToggleSwitch, {
+                    [css.ToggleSwitchActive]: isNoiseFilterEnabled,
+                  })}
+                  onClick={handleToggle}
+                  disabled={isNoiseFilterPending || !isNoiseFilterSupported}
+                  style={{ opacity: (isNoiseFilterPending || !isNoiseFilterSupported) ? 0.5 : 1 }}
+                >
+                  <span className={css.ToggleSwitchKnob} />
+                </button>
               </div>
-            )}
+
+              {/* Not supported warning */}
+              {!isNoiseFilterSupported && (
+                <div className={css.RNNoiseModalRow}>
+                  <span className={css.RNNoiseModalLabelDesc} style={{ color: '#F04747' }}>
+                    Not supported in this browser
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {/* Top Section */}
