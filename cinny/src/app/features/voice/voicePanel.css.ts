@@ -246,13 +246,13 @@ globalStyle(`${UserAvatar} img`, {
 
 export const UserStatusBadge = style({
   position: 'absolute',
-  bottom: '-2px',
-  right: '-2px',
-  width: '14px',
-  height: '14px',
+  bottom: '0px',
+  right: '0px',
+  width: '10px',
+  height: '10px',
   borderRadius: '50%',
   backgroundColor: butter.gray,
-  border: `3px solid ${butter.background}`,
+  border: `2px solid ${butter.background}`,
   transition: `background-color 0.2s ${discordEase}`,
 });
 
