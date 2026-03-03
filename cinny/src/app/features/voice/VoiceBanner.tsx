@@ -5,34 +5,23 @@ import { PingVisualizer } from './PingVisualizer';
 import { MediaControlsRow } from './MediaControlsRow';
 import * as css from './voicePanel.css';
 
-// Noise suppression waveform icons
+// Discord-style icons (20px for panel buttons)
 const NoiseFilterIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 10v4" />
-    <path d="M6 6v12" />
-    <path d="M10 3v18" />
-    <path d="M14 8v8" />
-    <path d="M18 5v14" />
-    <path d="M22 10v4" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 9v6h2V9H3Zm4-3v12h2V6H7Zm4-3v18h2V3h-2Zm4 5v8h2V8h-2Zm4-3v14h2V5h-2Z" />
   </svg>
 );
 
 const NoiseFilterActiveIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 10v4" />
-    <path d="M6 6v12" />
-    <path d="M10 3v18" />
-    <path d="M14 8v8" />
-    <path d="M18 5v14" />
-    <path d="M22 10v4" />
-    <circle cx="12" cy="12" r="3" fill="#43B581" stroke="none" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 9v6h2V9H3Zm4-3v12h2V6H7Zm4-3v18h2V3h-2Zm4 5v8h2V8h-2Zm4-3v14h2V5h-2Z" />
+    <circle cx="12" cy="12" r="4" fill="#23a55a" />
   </svg>
 );
 
 const DisconnectIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91" />
-    <line x1="22" x2="2" y1="2" y2="22" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21.1169 1.11603L22.8839 2.88303L19.7679 6.00003L21.9999 8.23203V11.001C21.9999 11.5523 21.5513 12.001 20.9999 12.001C20.6637 12.001 20.3554 11.8464 20.154 11.601L18.3539 9.80003L14.1209 14.034L16.3169 16.231C19.1619 15.035 22.5249 15.563 24.8839 17.921L23.4699 19.335C21.6119 17.479 18.7609 17.127 16.5279 18.281L19.7679 21.519L17.9999 23.285L2.88388 8.16903L4.64988 6.40203L6.71988 8.47203C5.56588 6.23803 5.91788 3.38903 7.77388 1.53003L9.18788 2.94403C6.82988 5.30203 6.30188 8.66503 7.49688 11.511L10.3219 8.68703C10.1229 8.48503 9.99988 8.20903 9.99988 7.90003V4.00003C9.99988 3.44772 10.4476 3.00003 10.9999 3.00003H12.9999C13.5522 3.00003 13.9999 3.44772 13.9999 4.00003V4.90003L18.3539 0.545029L18.3544 0.544995C18.7449 0.154471 19.3781 0.154471 19.7686 0.545029L21.1169 1.11603ZM12.7069 9.87803L14.8279 12.001L14.8289 12.002L12.7069 9.87803Z" />
   </svg>
 );
 

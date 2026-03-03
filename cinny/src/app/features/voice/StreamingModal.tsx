@@ -29,73 +29,62 @@ import { createWhipIngress, deleteWhipIngress, WhipIngressInfo } from "./Sunshin
 import { Track } from "livekit-client";
 import * as css from "./voicePanel.css";
 
-// Icons
+// Discord-style filled icons
 const CloseIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.4 4L12 10.4 5.6 4 4 5.6 10.4 12 4 18.4 5.6 20 12 13.6 18.4 20 20 18.4 13.6 12 20 5.6 18.4 4Z" />
   </svg>
 );
 
 const MonitorIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-    <line x1="8" y1="21" x2="16" y2="21" />
-    <line x1="12" y1="17" x2="12" y2="21" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M4 2C2.897 2 2 2.897 2 4V15C2 16.103 2.897 17 4 17H11V19H7V21H17V19H13V17H20C21.103 17 22 16.103 22 15V4C22 2.897 21.103 2 20 2H4ZM4 4H20V15H4V4Z" />
   </svg>
 );
 
 const WindowIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <line x1="3" y1="9" x2="21" y2="9" />
-    <circle cx="6.5" cy="6" r="1" fill="currentColor" />
-    <circle cx="9.5" cy="6" r="1" fill="currentColor" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M5 3C3.897 3 3 3.897 3 5V19C3 20.103 3.897 21 5 21H19C20.103 21 21 20.103 21 19V5C21 3.897 20.103 3 19 3H5ZM5 5H19V8H5V5ZM5 10H19V19H5V10Z" />
+    <circle cx="6.5" cy="6.5" r="1" />
+    <circle cx="9.5" cy="6.5" r="1" />
+    <circle cx="12.5" cy="6.5" r="1" />
   </svg>
 );
 
 const RefreshIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-    <path d="M3 3v5h5" />
-    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-    <path d="M16 16h5v5" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.65 6.35A7.96 7.96 0 0 0 12 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35Z" />
   </svg>
 );
 
 const ChevronDownIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41Z" />
   </svg>
 );
 
 const ChevronUpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="18 15 12 9 6 15" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41Z" />
   </svg>
 );
 
 const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z" />
   </svg>
 );
 
 const LiveIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="4" fill="currentColor" />
-    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" opacity="0.5" />
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z" opacity="0.4" />
   </svg>
 );
 
 const GpuIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="4" y="4" width="16" height="16" rx="2" />
-    <rect x="8" y="8" width="8" height="8" rx="1" />
-    <line x1="4" y1="10" x2="2" y2="10" />
-    <line x1="4" y1="14" x2="2" y2="14" />
-    <line x1="20" y1="10" x2="22" y2="10" />
-    <line x1="20" y1="14" x2="22" y2="14" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 4C4.897 4 4 4.897 4 6V18C4 19.103 4.897 20 6 20H18C19.103 20 20 19.103 20 18V6C20 4.897 19.103 4 18 4H6ZM6 6H18V18H6V6ZM8 8V16H16V8H8ZM1 10V14H3V10H1ZM21 10V14H23V10H21Z" />
   </svg>
 );
 

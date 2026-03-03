@@ -5,21 +5,16 @@ import { useLiveKitContext } from './LiveKitContext';
 import { usePingHistory, getPingColor, getPingQuality, PING_COLORS } from './usePingHistory';
 import * as css from './voicePanel.css';
 
-// Icons
+// Discord-style icons (20px)
 const CloseIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.4 4L12 10.4 5.6 4 4 5.6 10.4 12 4 18.4 5.6 20 12 13.6 18.4 20 20 18.4 13.6 12 20 5.6 18.4 4Z" />
   </svg>
 );
 
 const SignalIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 20h.01" />
-    <path d="M7 20v-4" />
-    <path d="M12 20v-8" />
-    <path d="M17 20V8" />
-    <path d="M22 20V4" />
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2 17h4v4H2v-4Zm6-6h4v10H8V11Zm6-5h4v15h-4V6Zm6-4h4v19h-4V2Z" />
   </svg>
 );
 

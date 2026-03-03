@@ -157,6 +157,7 @@ export const MediaControlsRow = style({
   borderTop: `1px solid ${butter.border}`,
 });
 
+// Discord-style media control buttons
 export const MediaBtn = style({
   flex: 1,
   height: '32px',
@@ -168,10 +169,13 @@ export const MediaBtn = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}`,
+  transition: `all 0.15s ${discordEase}`,
   ':hover': {
     backgroundColor: 'rgba(255, 251, 222, 0.12)',
     color: butter.text,
+  },
+  ':active': {
+    transform: 'scale(0.95)',
   },
   ':disabled': {
     opacity: 0.4,
@@ -179,12 +183,15 @@ export const MediaBtn = style({
   },
 });
 
+// Discord March 2025 style - green glow when camera/streaming active
 export const MediaBtnActive = style({
-  backgroundColor: 'rgba(35, 165, 90, 0.16)',
+  backgroundColor: 'rgba(35, 165, 90, 0.2)',
   color: butter.success,
+  boxShadow: '0 0 8px rgba(35, 165, 90, 0.4)',
   ':hover': {
-    backgroundColor: 'rgba(35, 165, 90, 0.24)',
+    backgroundColor: 'rgba(35, 165, 90, 0.3)',
     color: butter.success,
+    boxShadow: '0 0 12px rgba(35, 165, 90, 0.5)',
   },
 });
 
@@ -300,6 +307,7 @@ export const UserControls = style({
   flexShrink: 0,
 });
 
+// Discord-style control buttons with proper transitions
 export const ControlBtn = style({
   width: '32px',
   height: '32px',
@@ -311,19 +319,25 @@ export const ControlBtn = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}`,
+  transition: `all 0.15s ${discordEase}`,
   ':hover': {
     backgroundColor: 'rgba(255, 251, 222, 0.1)',
     color: butter.text,
   },
+  ':active': {
+    transform: 'scale(0.95)',
+  },
 });
 
+// Discord March 2025 style - prominent red glow when muted
 export const ControlBtnActive = style({
-  backgroundColor: 'rgba(242, 63, 67, 0.16)',
+  backgroundColor: 'rgba(242, 63, 67, 0.2)',
   color: butter.danger,
+  boxShadow: '0 0 8px rgba(242, 63, 67, 0.4)',
   ':hover': {
-    backgroundColor: 'rgba(242, 63, 67, 0.24)',
+    backgroundColor: 'rgba(242, 63, 67, 0.3)',
     color: butter.danger,
+    boxShadow: '0 0 12px rgba(242, 63, 67, 0.5)',
   },
 });
 
@@ -334,6 +348,7 @@ export const ControlBtnWithDropdown = style({
   overflow: 'hidden',
 });
 
+// Discord-style split button main part
 export const ControlBtnMain = style({
   width: '28px',
   height: '32px',
@@ -345,10 +360,13 @@ export const ControlBtnMain = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: `background-color 0.15s ${discordEase}, color 0.15s ${discordEase}`,
+  transition: `all 0.15s ${discordEase}`,
   ':hover': {
     backgroundColor: 'rgba(255, 251, 222, 0.1)',
     color: butter.text,
+  },
+  ':active': {
+    transform: 'scale(0.95)',
   },
 });
 
@@ -371,20 +389,25 @@ export const ControlBtnDropdown = style({
   },
 });
 
+// Discord-style disconnect with prominent appearance
 export const DisconnectBtn = style({
   width: '32px',
   height: '32px',
   borderRadius: '4px',
   border: 'none',
-  backgroundColor: 'rgba(242, 63, 67, 0.16)',
+  backgroundColor: 'rgba(242, 63, 67, 0.2)',
   color: butter.danger,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: `background-color 0.15s ${discordEase}`,
+  transition: `all 0.15s ${discordEase}`,
   ':hover': {
-    backgroundColor: 'rgba(242, 63, 67, 0.32)',
+    backgroundColor: 'rgba(242, 63, 67, 0.35)',
+    boxShadow: '0 0 12px rgba(242, 63, 67, 0.5)',
+  },
+  ':active': {
+    transform: 'scale(0.95)',
   },
 });
 
@@ -406,12 +429,15 @@ export const NoiseFilterBtn = style({
   },
 });
 
+// Discord March 2025 style - green glow when active
 export const NoiseFilterBtnActive = style({
-  backgroundColor: 'rgba(35, 165, 90, 0.16)',
+  backgroundColor: 'rgba(35, 165, 90, 0.2)',
   color: butter.success,
+  boxShadow: '0 0 8px rgba(35, 165, 90, 0.4)',
   ':hover': {
-    backgroundColor: 'rgba(35, 165, 90, 0.24)',
+    backgroundColor: 'rgba(35, 165, 90, 0.3)',
     color: butter.success,
+    boxShadow: '0 0 12px rgba(35, 165, 90, 0.5)',
   },
 });
 
