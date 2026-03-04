@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny-Min",
-    "version": "4.11.86"
+    "version": "4.11.87"
   },
   "build": {
     "withGlobalTauri": true,
@@ -24,7 +24,7 @@
       ],
       "resources": {
         "resources/WebView2Loader.dll": "",
-        "gstreamer/**/*": "gstreamer/"
+        "*.dll": ""
       },
       "externalBin": [],
       "copyright": "© 2026 endershare.org",
