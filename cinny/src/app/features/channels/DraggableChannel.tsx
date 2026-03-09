@@ -9,6 +9,20 @@ import { useLiveKitContext } from '../voice/LiveKitContext';
 import { useCallDuration } from '../voice/useCallDuration';
 import * as css from './unifiedChannels.css';
 
+// Drag handle grip icon (6 dots like Discord)
+function DragGrip() {
+  return (
+    <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor">
+      <circle cx="2" cy="2" r="1.5" />
+      <circle cx="6" cy="2" r="1.5" />
+      <circle cx="2" cy="7" r="1.5" />
+      <circle cx="6" cy="7" r="1.5" />
+      <circle cx="2" cy="12" r="1.5" />
+      <circle cx="6" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
 interface ParticipantInfo {
   identity: string;
   name: string;
@@ -79,6 +93,7 @@ export function DraggableChannel({
 }: DraggableChannelProps) {
   const navigate = useNavigate();
   const targetRef = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
 
   const { isConnected, currentRoom, setShowVoiceView } = useLiveKitContext();
   const { formatted: formattedDuration } = useCallDuration(isConnected);
@@ -93,8 +108,8 @@ export function DraggableChannel({
     channelType: channel.type,
   };
 
-  // Full row is draggable (no separate drag handle)
-  const dragging = useDraggableChannel(dragItem, targetRef, onDragging);
+  // Use drag handle for dragging (Discord-style)
+  const dragging = useDraggableChannel(dragItem, targetRef, onDragging, dragHandleRef);
   const dropState = useDropTarget(dragItem, targetRef);
   const dropType = dropState?.type;
 
@@ -137,6 +152,11 @@ export function DraggableChannel({
       >
         {dropType === 'reorder-above' && <div className={css.DropIndicatorAbove} />}
         {dropType === 'reorder-below' && <div className={css.DropIndicatorBelow} />}
+
+        {/* Drag handle (grip icon) */}
+        <div ref={dragHandleRef} className={css.DragHandle}>
+          <DragGrip />
+        </div>
 
         {isVoice ? (
           <VoiceIcon connected={isCurrentVoiceRoom} />

@@ -7,6 +7,26 @@ const dropPulse = keyframes({
   '50%': { opacity: 0.6 },
 });
 
+// Drag handle (grip icon) - must be defined before items that reference it
+export const DragHandle = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '12px',
+  height: '20px',
+  opacity: 0,
+  cursor: 'grab',
+  color: color.Surface.OnContainer,
+  flexShrink: 0,
+  transition: 'opacity 0.15s',
+  marginLeft: '-4px',
+  marginRight: '-4px',
+
+  ':active': {
+    cursor: 'grabbing',
+  },
+});
+
 // Category header
 export const CategoryHeader = style({
   display: 'flex',
@@ -14,27 +34,34 @@ export const CategoryHeader = style({
   gap: config.space.S200,
   padding: `${config.space.S200} ${config.space.S300}`,
   marginTop: config.space.S300,
-  cursor: 'grab',
+  cursor: 'pointer',
   userSelect: 'none',
   borderRadius: config.radii.R300,
-  transition: 'background 0.15s',
+  transition: 'background 0.15s, transform 0.15s',
   position: 'relative',
 
   ':hover': {
     backgroundColor: color.Surface.ContainerHover,
   },
 
-  ':active': {
-    cursor: 'grabbing',
-  },
-
   ':first-child': {
     marginTop: 0,
+  },
+
+  selectors: {
+    [`&:hover ${DragHandle}`]: {
+      opacity: 0.5,
+    },
+    [`&:hover ${DragHandle}:hover`]: {
+      opacity: 1,
+    },
   },
 });
 
 export const CategoryHeaderDragging = style({
-  opacity: 0.5,
+  opacity: 0.4,
+  transform: 'scale(0.98)',
+  backgroundColor: color.Surface.ContainerActive,
 });
 
 export const CategoryChevron = style({
@@ -55,8 +82,6 @@ export const CategoryName = style({
   color: color.Surface.OnContainer,
 });
 
-// Removed - now using full-row dragging
-
 // Channel item
 export const ChannelItem = style({
   display: 'flex',
@@ -66,13 +91,18 @@ export const ChannelItem = style({
   marginLeft: config.space.S100,
   marginTop: config.space.S50,
   borderRadius: config.radii.R300,
-  cursor: 'grab',
-  transition: 'background 0.15s',
+  cursor: 'pointer',
+  transition: 'background 0.15s, transform 0.15s',
   position: 'relative',
   color: color.Surface.OnContainer, // Required for SVG currentColor inheritance
 
-  ':active': {
-    cursor: 'grabbing',
+  selectors: {
+    [`&:hover ${DragHandle}`]: {
+      opacity: 0.5,
+    },
+    [`&:hover ${DragHandle}:hover`]: {
+      opacity: 1,
+    },
   },
 });
 
@@ -81,7 +111,9 @@ export const ChannelItemSelected = style({
 });
 
 export const ChannelItemDragging = style({
-  opacity: 0.5,
+  opacity: 0.4,
+  transform: 'scale(0.98)',
+  backgroundColor: color.Surface.ContainerActive,
 });
 
 // Voice connected style - defined before adding hover to ChannelItem
