@@ -47,15 +47,14 @@ export const CategoryHeader = style({
   ':first-child': {
     marginTop: 0,
   },
+});
 
-  selectors: {
-    [`&:hover ${DragHandle}`]: {
-      opacity: 0.5,
-    },
-    [`&:hover ${DragHandle}:hover`]: {
-      opacity: 1,
-    },
-  },
+// Show drag handle on category hover
+globalStyle(`${CategoryHeader}:hover ${DragHandle}`, {
+  opacity: 0.5,
+});
+globalStyle(`${CategoryHeader}:hover ${DragHandle}:hover`, {
+  opacity: 1,
 });
 
 export const CategoryHeaderDragging = style({
@@ -95,15 +94,14 @@ export const ChannelItem = style({
   transition: 'background 0.15s, transform 0.15s',
   position: 'relative',
   color: color.Surface.OnContainer, // Required for SVG currentColor inheritance
+});
 
-  selectors: {
-    [`&:hover ${DragHandle}`]: {
-      opacity: 0.5,
-    },
-    [`&:hover ${DragHandle}:hover`]: {
-      opacity: 1,
-    },
-  },
+// Show drag handle on channel hover
+globalStyle(`${ChannelItem}:hover ${DragHandle}`, {
+  opacity: 0.5,
+});
+globalStyle(`${ChannelItem}:hover ${DragHandle}:hover`, {
+  opacity: 1,
 });
 
 export const ChannelItemSelected = style({
