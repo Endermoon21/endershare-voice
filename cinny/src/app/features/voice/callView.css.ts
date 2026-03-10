@@ -82,14 +82,21 @@ export const MainContent = style({
   gap: config.space.S300,
 });
 
-// Participant grid that scales to fit without scrolling
+// Participant grid that scales to fit without scrolling (Discord-style)
+// Grid columns are set dynamically via CSS variable --grid-cols
 export const ParticipantGrid = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: config.space.S300,
-  alignContent: 'center',
-  justifyContent: 'center',
+  display: 'grid',
+  // Columns set via CSS variable, default to 2
+  gridTemplateColumns: 'repeat(var(--grid-cols, 2), 1fr)',
+  // Rows also use CSS variable for row count
+  gridTemplateRows: 'repeat(var(--grid-rows, 2), 1fr)',
+  gap: config.space.S200,
   height: '100%',
+  width: '100%',
+  padding: config.space.S200,
+  // Ensure grid doesn't overflow
+  overflow: 'hidden',
+  boxSizing: 'border-box',
 });
 
 // Compact participant strip for when streaming
@@ -111,11 +118,16 @@ export const ParticipantTile = style({
   justifyContent: 'center',
   gap: config.space.S200,
   transition: 'box-shadow 0.2s',
-  // Flexible sizing - shrinks to fit more participants
-  flex: '1 1 120px',
-  minWidth: '100px',
-  maxWidth: '180px',
-  aspectRatio: '1',
+  // Grid child - fills cell and maintains aspect ratio
+  width: '100%',
+  height: '100%',
+  minWidth: 0,
+  minHeight: 0,
+  // Limit max size for very few participants
+  maxWidth: '250px',
+  maxHeight: '250px',
+  justifySelf: 'center',
+  alignSelf: 'center',
 });
 
 // Compact tile for strip view during streaming

@@ -1,8 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Box, Text, IconButton, config } from 'folds';
 import classNames from 'classnames';
 import { useLiveKitContext, VoiceParticipant } from './LiveKitContext';
 import * as css from './callView.css';
+
+// Calculate optimal grid layout based on participant count (Discord-style)
+function getGridLayout(count: number): { cols: number; rows: number } {
+  if (count <= 1) return { cols: 1, rows: 1 };
+  if (count <= 2) return { cols: 2, rows: 1 };
+  if (count <= 4) return { cols: 2, rows: 2 };
+  if (count <= 6) return { cols: 3, rows: 2 };
+  if (count <= 9) return { cols: 3, rows: 3 };
+  if (count <= 12) return { cols: 4, rows: 3 };
+  if (count <= 16) return { cols: 4, rows: 4 };
+  // For very large calls, calculate dynamically
+  const cols = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+  return { cols, rows };
+}
 
 interface ParticipantTileProps {
   participant: VoiceParticipant;
@@ -95,6 +110,9 @@ export function VoiceCallView() {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const [viewingStream, setViewingStream] = useState(false);
 
+  // Calculate grid layout based on participant count
+  const gridLayout = useMemo(() => getGridLayout(participants.length), [participants.length]);
+
   // Reset viewing state when screen share ends
   useEffect(() => {
     if (!screenShareInfo) {
@@ -162,7 +180,13 @@ export function VoiceCallView() {
               </div>
             </>
           ) : (
-            <div className={css.ParticipantGrid}>
+            <div
+              className={css.ParticipantGrid}
+              style={{
+                '--grid-cols': gridLayout.cols,
+                '--grid-rows': gridLayout.rows,
+              } as React.CSSProperties}
+            >
               {participants.map((p) => {
                 // Only make clickable if screen share track is actually available
                 // screenShareInfo is set when the video track is subscribed
