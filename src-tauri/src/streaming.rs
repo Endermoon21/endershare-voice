@@ -247,15 +247,17 @@ fn build_video_capture(config: &StreamConfig) -> String {
     #[cfg(target_os = "windows")]
     {
         // Check if capturing a specific window or full desktop
+        // NOTE: Using DXGI (default) instead of WGC for better performance
+        // WGC is slow (~6 FPS) while DXGI achieves 60+ FPS
         if config.source_id.starts_with("title=") {
-            // Window capture using window title
+            // Window capture using window title (DXGI mode)
             let title = &config.source_id[6..]; // Strip "title=" prefix
             video.push_str(&format!(
-                "d3d11screencapturesrc window-name=\"{}\" show-cursor=true capture-api=wgc",
+                "d3d11screencapturesrc window-name=\"{}\" show-cursor=true",
                 title
             ));
         } else {
-            // Full desktop capture
+            // Full desktop capture (DXGI mode - default)
             video.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
         }
 
@@ -272,11 +274,12 @@ fn build_video_capture(config: &StreamConfig) -> String {
             config.width, config.height
         ));
 
-        // Queue for stability - moderate buffer to prevent stuttering while keeping latency low
-        video.push_str(" ! queue max-size-buffers=5 max-size-time=0 max-size-bytes=0 leaky=downstream");
+        // Queue for stability - small buffer for low latency
+        video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
         // Download from GPU memory to system memory for whipclientsink
-        video.push_str(" ! d3d11download ! videoconvert");
+        // Note: videoconvert removed - d3d11download output is already suitable
+        video.push_str(" ! d3d11download");
     }
 
     #[cfg(target_os = "linux")]
