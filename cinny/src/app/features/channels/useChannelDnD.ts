@@ -185,8 +185,13 @@ export function useDropTarget(
         setDropState(undefined);
       },
       onDrop: () => {
-        console.log('[DnD DropTarget] onDrop:', itemRef.current.id);
-        setDropState(undefined);
+        try {
+          console.log('[DnD DropTarget] onDrop:', itemRef.current.id);
+          setDropState(undefined);
+          console.log('[DnD DropTarget] onDrop complete');
+        } catch (e) {
+          console.error('[DnD DropTarget] Error in onDrop:', e);
+        }
       },
     });
   }, [targetRef]);
@@ -210,6 +215,8 @@ export function useDropTargetInstruction<T extends InstructionType>(
     const target = targetRef.current;
     if (!target) return undefined;
 
+    console.log('[DnD DropInstruction] Registering:', itemRef.current.id, instructionType);
+
     return dropTargetForElements({
       element: target,
       canDrop: ({ source }) => {
@@ -218,14 +225,26 @@ export function useDropTargetInstruction<T extends InstructionType>(
         return dragItem.id !== currentItem.id || dragItem.type !== currentItem.type;
       },
       getData: () => {
+        console.log('[DnD DropInstruction] getData:', itemRef.current.id, instructionType);
         setDropState(instructionType);
         return {
           item: itemRef.current,
           instructionType,
         };
       },
-      onDragLeave: () => setDropState(undefined),
-      onDrop: () => setDropState(undefined),
+      onDragLeave: () => {
+        console.log('[DnD DropInstruction] onDragLeave:', itemRef.current.id);
+        setDropState(undefined);
+      },
+      onDrop: () => {
+        try {
+          console.log('[DnD DropInstruction] onDrop:', itemRef.current.id);
+          setDropState(undefined);
+          console.log('[DnD DropInstruction] onDrop complete');
+        } catch (e) {
+          console.error('[DnD DropInstruction] Error in onDrop:', e);
+        }
+      },
     });
   }, [targetRef, instructionType]);
 

@@ -241,7 +241,7 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
 
   return (
     <Box direction="Column" gap="100">
-      {categories.map(category => (
+      {categories.filter(cat => cat != null).map(category => (
         <DraggableCategory
           key={category.id}
           id={category.id}
