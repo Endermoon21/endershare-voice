@@ -94,8 +94,16 @@ export function DraggableCategory({
         <span className={css.CategoryName}>{name}</span>
       </div>
 
-      {/* Category content (channels) */}
-      {!collapsed && children}
+      {/* Category content (channels) - animated */}
+      <div
+        className={classNames(css.CategoryContent, {
+          [css.CategoryContentCollapsed]: collapsed,
+        })}
+      >
+        <div className={css.CategoryContentInner}>
+          {children}
+        </div>
+      </div>
 
       {/* Drop target below category */}
       <div

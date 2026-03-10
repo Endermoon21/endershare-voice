@@ -7,6 +7,23 @@ const dropPulse = keyframes({
   '50%': { opacity: 0.6 },
 });
 
+// Category content wrapper for animations
+export const CategoryContent = style({
+  display: 'grid',
+  gridTemplateRows: '1fr',
+  transition: 'grid-template-rows 0.2s ease-out, opacity 0.2s ease-out',
+  opacity: 1,
+});
+
+export const CategoryContentCollapsed = style({
+  gridTemplateRows: '0fr',
+  opacity: 0,
+});
+
+export const CategoryContentInner = style({
+  overflow: 'hidden',
+});
+
 // Drag handle (grip icon) - must be defined before items that reference it
 export const DragHandle = style({
   display: 'flex',
