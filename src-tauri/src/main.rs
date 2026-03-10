@@ -16,21 +16,41 @@ fn setup_gstreamer_paths() {
     // Try to find bundled GStreamer DLLs relative to executable
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(app_dir) = exe_path.parent() {
+            // First try structured gstreamer folder (dev setup)
             let gst_root = app_dir.join("gstreamer");
-            let gst_plugins = gst_root.join("lib").join("gstreamer-1.0");
-            let gst_bin = gst_root.join("bin");
+            let gst_plugins_structured = gst_root.join("lib").join("gstreamer-1.0");
 
-            if gst_plugins.exists() {
-                std::env::set_var("GST_PLUGIN_PATH", &gst_plugins);
-                log::info!("Set GST_PLUGIN_PATH to {:?}", gst_plugins);
-            }
+            // Also check if plugins are directly in app dir (bundled setup)
+            let gst_plugins_flat = app_dir.to_path_buf();
 
-            // Add GStreamer bin to PATH for DLL loading
-            if gst_bin.exists() {
+            // Check for a known plugin to detect which layout we have
+            let has_structured = gst_plugins_structured.join("gstrswebrtc.dll").exists();
+            let has_flat = gst_plugins_flat.join("gstrswebrtc.dll").exists();
+
+            if has_structured {
+                std::env::set_var("GST_PLUGIN_PATH", &gst_plugins_structured);
+                log::info!("Set GST_PLUGIN_PATH to {:?} (structured)", gst_plugins_structured);
+
+                // Add GStreamer bin to PATH for DLL loading
+                let gst_bin = gst_root.join("bin");
+                if gst_bin.exists() {
+                    if let Ok(current_path) = std::env::var("PATH") {
+                        let new_path = format!("{};{}", gst_bin.display(), current_path);
+                        std::env::set_var("PATH", &new_path);
+                    }
+                }
+            } else if has_flat {
+                std::env::set_var("GST_PLUGIN_PATH", &gst_plugins_flat);
+                log::info!("Set GST_PLUGIN_PATH to {:?} (flat)", gst_plugins_flat);
+
+                // App dir should already be in PATH, but add it just in case
                 if let Ok(current_path) = std::env::var("PATH") {
-                    let new_path = format!("{};{}", gst_bin.display(), current_path);
+                    let new_path = format!("{};{}", app_dir.display(), current_path);
                     std::env::set_var("PATH", &new_path);
                 }
+            } else {
+                log::warn!("Could not find GStreamer plugins in {:?} or {:?}",
+                    gst_plugins_structured, gst_plugins_flat);
             }
         }
     }
