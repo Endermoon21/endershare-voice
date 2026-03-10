@@ -67,40 +67,117 @@ export const CloseBtn = style({
 
 export const Content = style({
   flex: 1,
-  overflow: 'auto',
+  overflow: 'hidden',
   padding: config.space.S400,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: config.space.S300,
 });
 
+// Main content area - grows to fill available space
+export const MainContent = style({
+  flex: 1,
+  minHeight: 0,
+  display: 'flex',
+  gap: config.space.S300,
+});
+
+// Participant grid that scales to fit without scrolling
 export const ParticipantGrid = style({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-  gap: config.space.S400,
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: config.space.S300,
+  alignContent: 'center',
+  justifyContent: 'center',
+  height: '100%',
+});
+
+// Compact participant strip for when streaming
+export const ParticipantStrip = style({
+  display: 'flex',
+  gap: config.space.S200,
+  flexShrink: 0,
+  overflowX: 'auto',
+  paddingBottom: config.space.S100,
 });
 
 export const ParticipantTile = style({
   backgroundColor: color.Surface.Container,
   borderRadius: config.radii.R400,
-  padding: config.space.S400,
+  padding: config.space.S300,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
+  justifyContent: 'center',
   gap: config.space.S200,
   transition: 'box-shadow 0.2s',
+  // Flexible sizing - shrinks to fit more participants
+  flex: '1 1 120px',
+  minWidth: '100px',
+  maxWidth: '180px',
+  aspectRatio: '1',
+});
+
+// Compact tile for strip view during streaming
+export const ParticipantTileCompact = style({
+  backgroundColor: color.Surface.Container,
+  borderRadius: config.radii.R300,
+  padding: config.space.S200,
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  transition: 'box-shadow 0.2s',
+  flexShrink: 0,
+});
+
+export const TileAvatarCompact = style({
+  width: '32px',
+  height: '32px',
+  borderRadius: '50%',
+  backgroundColor: color.Primary.Main,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#fff',
+  flexShrink: 0,
+});
+
+export const TileNameCompact = style({
+  color: color.Background.OnContainer,
+  fontSize: '13px',
+  whiteSpace: 'nowrap',
 });
 
 export const Speaking = style({
   boxShadow: '0 0 0 3px #43b581',
 });
 
+export const Clickable = style({
+  cursor: 'pointer',
+  ':hover': {
+    backgroundColor: color.Surface.ContainerHover,
+    transform: 'scale(1.02)',
+  },
+});
+
+export const WatchHint = style({
+  color: color.Success.Main,
+  fontSize: '11px',
+  marginTop: config.space.S100,
+});
+
 export const TileAvatar = style({
-  width: '64px',
-  height: '64px',
+  width: '50%',
+  maxWidth: '64px',
+  aspectRatio: '1',
   borderRadius: '50%',
   backgroundColor: color.Primary.Main,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '24px',
+  fontSize: 'clamp(14px, 2vw, 24px)',
   fontWeight: 600,
   color: '#fff',
 });
@@ -120,16 +197,31 @@ export const TileIcons = style({
   marginTop: config.space.S100,
 });
 
+// Icon styles with proper scaling
 export const MutedIcon = style({
+  width: '14px',
+  height: '14px',
+  flexShrink: 0,
+  color: color.Critical.Main,
+});
+
+export const DeafenedIcon = style({
+  width: '14px',
+  height: '14px',
+  flexShrink: 0,
   color: color.Critical.Main,
 });
 
 export const ScreenIcon = style({
+  width: '14px',
+  height: '14px',
+  flexShrink: 0,
   color: color.Success.Main,
 });
 
 export const ScreenShareContainer = style({
-  height: '100%',
+  flex: 1,
+  minHeight: 0,
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
@@ -137,6 +229,7 @@ export const ScreenShareContainer = style({
 
 export const VideoContainer = style({
   flex: 1,
+  minHeight: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -146,8 +239,8 @@ export const VideoContainer = style({
 });
 
 export const ScreenShareVideo = style({
-  maxWidth: '100%',
-  maxHeight: '100%',
+  width: '100%',
+  height: '100%',
   objectFit: 'contain',
 });
 
@@ -160,6 +253,22 @@ export const ScreenShareLabel = style({
   padding: `${config.space.S100} ${config.space.S200}`,
   borderRadius: config.radii.R300,
   fontSize: '13px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+});
+
+export const BackToParticipantsBtn = style({
+  padding: `${config.space.S50} ${config.space.S200}`,
+  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: config.radii.R300,
+  fontSize: '12px',
+  cursor: 'pointer',
+  ':hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
 });
 
 export const Controls = style({

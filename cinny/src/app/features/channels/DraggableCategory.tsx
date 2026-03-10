@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, ReactNode, MouseEventHandler } from 'react';
+import React, { useRef, useCallback, ReactNode, MouseEventHandler, Children, isValidElement, cloneElement } from 'react';
 import { Box, Icon, Icons } from 'folds';
 import classNames from 'classnames';
 import { useDraggableChannel, useDropTarget, useDropTargetInstruction, ChannelDragData, wasDragOperation } from './useChannelDnD';
@@ -12,6 +12,7 @@ interface DraggableCategoryProps {
   onDragging: (item?: ChannelDragData) => void;
   disabled?: boolean;
   children?: ReactNode;
+  selectedChildId?: string; // If set, this child remains visible when collapsed
 }
 
 export function DraggableCategory({
@@ -22,6 +23,7 @@ export function DraggableCategory({
   onDragging,
   disabled,
   children,
+  selectedChildId,
 }: DraggableCategoryProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const aboveTargetRef = useRef<HTMLDivElement>(null);
@@ -95,15 +97,45 @@ export function DraggableCategory({
       </div>
 
       {/* Category content (channels) - animated */}
-      <div
-        className={classNames(css.CategoryContent, {
-          [css.CategoryContentCollapsed]: collapsed,
-        })}
-      >
-        <div className={css.CategoryContentInner}>
-          {children}
-        </div>
-      </div>
+      {(() => {
+        // Separate selected child from others when collapsed
+        let selectedChild: ReactNode = null;
+        let otherChildren: ReactNode[] = [];
+
+        if (collapsed && selectedChildId) {
+          Children.forEach(children, (child) => {
+            if (isValidElement(child)) {
+              // Check if this child's key matches the selected ID
+              const childKey = child.key?.toString() || '';
+              if (childKey.includes(selectedChildId)) {
+                selectedChild = child;
+              } else {
+                otherChildren.push(child);
+              }
+            } else {
+              otherChildren.push(child);
+            }
+          });
+        }
+
+        return (
+          <>
+            {/* Selected channel stays visible outside animation */}
+            {collapsed && selectedChild}
+
+            {/* Other channels animate closed */}
+            <div
+              className={classNames(css.CategoryContent, {
+                [css.CategoryContentCollapsed]: collapsed,
+              })}
+            >
+              <div className={css.CategoryContentInner}>
+                {collapsed && selectedChildId ? otherChildren : children}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Drop target below category */}
       <div

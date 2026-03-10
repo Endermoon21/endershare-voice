@@ -244,7 +244,7 @@ function ParticipantControl({ participant, avatarUrl, displayName, onClose }: Pa
         </div>
         <div className={css.VolumeSliderContainer}>
           <span className={css.VolumeIcon}>{volume === 0 ? <VolumeMuteIcon /> : <VolumeHighIcon />}</span>
-          <input type="range" min="0" max="2" step="0.01" value={volume} onChange={handleVolumeChange} className={css.VolumeSlider} />
+          <input type="range" min="0" max="4" step="0.01" value={volume} onChange={handleVolumeChange} className={css.VolumeSlider} />
         </div>
       </div>
       <button className={classNames(css.LocalMuteBtn, { [css.LocalMuteBtnActive]: localMuted || volume === 0 })} onClick={toggleLocalMute}>

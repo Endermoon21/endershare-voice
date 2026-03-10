@@ -1,12 +1,29 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, Text, IconButton, config } from 'folds';
 import classNames from 'classnames';
 import { useLiveKitContext, VoiceParticipant } from './LiveKitContext';
 import * as css from './callView.css';
 
-function ParticipantTile({ participant }: { participant: VoiceParticipant }) {
+interface ParticipantTileProps {
+  participant: VoiceParticipant;
+  onWatchStream?: () => void;
+  isLocalDeafened?: boolean; // Only applicable for local user
+}
+
+function ParticipantTile({ participant, onWatchStream, isLocalDeafened }: ParticipantTileProps) {
+  const isClickable = participant.isScreenSharing && onWatchStream;
+  const showDeafened = participant.isLocal && isLocalDeafened;
+
   return (
-    <div className={classNames(css.ParticipantTile, { [css.Speaking]: participant.isSpeaking })}>
+    <div
+      className={classNames(css.ParticipantTile, {
+        [css.Speaking]: participant.isSpeaking,
+        [css.Clickable]: isClickable,
+      })}
+      onClick={isClickable ? onWatchStream : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+    >
       <div className={css.TileAvatar}>
         <span>{participant.name.split('-')[0].charAt(0).toUpperCase()}</span>
       </div>
@@ -15,18 +32,44 @@ function ParticipantTile({ participant }: { participant: VoiceParticipant }) {
           {participant.name.split('-')[0]} {participant.isLocal && '(you)'}
         </Text>
         <div className={css.TileIcons}>
-          {participant.isMuted && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={css.MutedIcon}>
+          {showDeafened ? (
+            <svg className={css.DeafenedIcon} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.27 1.44L2 2.72L4.05 4.77C2.75 6.37 2 8.38 2 10.5V11H5V10.5C5 9.06 5.46 7.72 6.24 6.6L20.27 20.63L21.54 19.36L3.27 1.44ZM12 3.5C8.13 3.5 5 6.63 5 10.5V11H2V10.5C2 5.53 6.03 1.5 11 1.5H13C17.97 1.5 22 5.53 22 10.5V11H19V10.5C19 6.63 15.87 3.5 12 3.5Z" />
+            </svg>
+          ) : participant.isMuted && (
+            <svg className={css.MutedIcon} viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4C10.9 4 10 4.9 10 6V12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12V6C14 4.9 13.1 4 12 4ZM3.27 3L2 4.27L9.73 12H6V12.5C6 15.5 8.72 17.97 12 17.97L16.34 19.58L20.73 23L22 21.73L3.27 3Z" />
             </svg>
           )}
           {participant.isScreenSharing && (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={css.ScreenIcon}>
+            <svg className={css.ScreenIcon} viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z" />
             </svg>
           )}
         </div>
       </div>
+      {/* Visual indicator for streamers */}
+      {participant.isScreenSharing && (
+        <Text size="T200" className={css.WatchHint}>Click to watch</Text>
+      )}
+    </div>
+  );
+}
+
+function CompactParticipantTile({ participant }: { participant: VoiceParticipant }) {
+  return (
+    <div className={classNames(css.ParticipantTileCompact, { [css.Speaking]: participant.isSpeaking })}>
+      <div className={css.TileAvatarCompact}>
+        <span>{participant.name.split('-')[0].charAt(0).toUpperCase()}</span>
+      </div>
+      <span className={css.TileNameCompact}>
+        {participant.name.split('-')[0]} {participant.isLocal && '(you)'}
+      </span>
+      {participant.isMuted && (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={css.MutedIcon}>
+          <path d="M12 4C10.9 4 10 4.9 10 6V12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12V6C14 4.9 13.1 4 12 4ZM3.27 3L2 4.27L9.73 12H6V12.5C6 15.5 8.72 17.97 12 17.97L16.34 19.58L20.73 23L22 21.73L3.27 3Z" />
+        </svg>
+      )}
     </div>
   );
 }
@@ -38,21 +81,29 @@ export function VoiceCallView() {
     participants,
     isMuted,
     isDeafened,
-    
+
     screenShareInfo,
     connectionQuality,
     disconnect,
     toggleMute,
     toggleDeafen,
-    
+
     closeCallView,
     getScreenShareElement,
   } = useLiveKitContext();
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const [viewingStream, setViewingStream] = useState(false);
+
+  // Reset viewing state when screen share ends
+  useEffect(() => {
+    if (!screenShareInfo) {
+      setViewingStream(false);
+    }
+  }, [screenShareInfo]);
 
   useEffect(() => {
-    if (screenShareInfo && videoContainerRef.current) {
+    if (viewingStream && screenShareInfo && videoContainerRef.current) {
       const videoEl = getScreenShareElement();
       if (videoEl) {
         videoContainerRef.current.innerHTML = '';
@@ -60,7 +111,7 @@ export function VoiceCallView() {
         videoContainerRef.current.appendChild(videoEl);
       }
     }
-  }, [screenShareInfo, getScreenShareElement]);
+  }, [viewingStream, screenShareInfo, getScreenShareElement]);
 
   if (!isConnected || !currentRoom) return null;
 
@@ -90,17 +141,35 @@ export function VoiceCallView() {
         </div>
 
         <div className={css.Content}>
-          {screenShareInfo ? (
-            <div className={css.ScreenShareContainer}>
-              <div ref={videoContainerRef} className={css.VideoContainer} />
-              <div className={css.ScreenShareLabel}>
-                {screenShareInfo.participantName.split('-')[0]}'s screen
+          {viewingStream && screenShareInfo ? (
+            <>
+              <div className={css.MainContent}>
+                <div className={css.ScreenShareContainer}>
+                  <div ref={videoContainerRef} className={css.VideoContainer} />
+                  <div className={css.ScreenShareLabel}>
+                    <span>{screenShareInfo.participantName.split('-')[0]}'s screen</span>
+                    <button className={css.BackToParticipantsBtn} onClick={() => setViewingStream(false)}>
+                      Back
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+              {/* Compact participant strip at bottom during streaming */}
+              <div className={css.ParticipantStrip}>
+                {participants.map((p) => (
+                  <CompactParticipantTile key={p.identity} participant={p} />
+                ))}
+              </div>
+            </>
           ) : (
             <div className={css.ParticipantGrid}>
               {participants.map((p) => (
-                <ParticipantTile key={p.identity} participant={p} />
+                <ParticipantTile
+                  key={p.identity}
+                  participant={p}
+                  onWatchStream={p.isScreenSharing ? () => setViewingStream(true) : undefined}
+                  isLocalDeafened={isDeafened}
+                />
               ))}
             </div>
           )}

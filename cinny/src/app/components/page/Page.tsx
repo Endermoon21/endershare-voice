@@ -1,5 +1,4 @@
 import React, { ComponentProps, MutableRefObject, ReactNode, useEffect, useRef, useState, useCallback } from "react";
-import { useLocation } from "react-router-dom";
 import { VoicePanel, VoiceRoom, useLiveKitContext } from "../../features/voice";
 import { Box, Header, Line, Scroll, Text, as } from "folds";
 import classNames from "classnames";
@@ -20,17 +19,7 @@ type PageRootProps = {
 
 export function PageRoot({ nav, children }: PageRootProps) {
   const screenSize = useScreenSizeContext();
-  const location = useLocation();
-  const { showVoiceView, setShowVoiceView, isConnected } = useLiveKitContext();
-  const prevPathRef = useRef(location.pathname);
-
-  // Auto-hide voice view when navigating to ANY different page
-  useEffect(() => {
-    if (prevPathRef.current !== location.pathname && showVoiceView) {
-      setShowVoiceView(false);
-    }
-    prevPathRef.current = location.pathname;
-  }, [location.pathname, showVoiceView, setShowVoiceView]);
+  const { showVoiceView, isConnected } = useLiveKitContext();
 
   return (
     <Box grow="Yes" className={ContainerColor({ variant: "Background" })}>
@@ -54,18 +43,6 @@ export function PageNav({
 }: ClientDrawerLayoutProps & css.PageNavVariants) {
   const screenSize = useScreenSizeContext();
   const isMobile = screenSize === ScreenSize.Mobile;
-  const { showVoiceView, setShowVoiceView } = useLiveKitContext();
-
-  // Hide voice view when clicking anywhere in the nav (except voice channel or voice panel)
-  const handleNavClick = useCallback((e: React.MouseEvent) => {
-    // Don't hide if clicking on voice channel elements or voice panel
-    const target = e.target as HTMLElement;
-    if (target.closest('[data-voice-channel]') || target.closest('[data-voice-panel]')) return;
-
-    if (showVoiceView) {
-      setShowVoiceView(false);
-    }
-  }, [showVoiceView, setShowVoiceView]);
 
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -119,7 +96,6 @@ export function PageNav({
       shrink={isMobile ? "Yes" : "No"}
       direction="Column"
       style={{ ...widthStyle, position: 'relative' }}
-      onClick={handleNavClick}
     >
       <Box grow="Yes" direction="Column" style={{ minHeight: 0, overflow: "hidden" }}>
         {children}

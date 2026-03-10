@@ -107,13 +107,52 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const diagnosticsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const volumesRef = useRef<Record<string, number>>({});
 
+  // Web Audio API for volume boost beyond 100%
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainNodesRef = useRef<Map<string, GainNode>>(new Map());
+  const sourceNodesRef = useRef<Map<string, MediaElementAudioSourceNode>>(new Map());
+
   useEffect(() => { volumesRef.current = participantVolumes; }, [participantVolumes]);
 
+  // Setup gain node for an audio element (allows volume > 100%)
+  const setupGainNode = useCallback((identity: string, audioElement: HTMLAudioElement) => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    const ctx = audioContextRef.current;
+
+    // Don't create duplicate source nodes
+    if (sourceNodesRef.current.has(identity)) return gainNodesRef.current.get(identity);
+
+    const source = ctx.createMediaElementSource(audioElement);
+    const gainNode = ctx.createGain();
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    sourceNodesRef.current.set(identity, source);
+    gainNodesRef.current.set(identity, gainNode);
+
+    // Apply saved volume
+    const savedVolume = volumesRef.current[identity] ?? 1;
+    gainNode.gain.value = savedVolume;
+
+    return gainNode;
+  }, []);
+
   const setParticipantVolume = useCallback((identity: string, volume: number) => {
-    const clampedVolume = Math.max(0, Math.min(2, volume));
+    // Allow up to 400% volume boost
+    const clampedVolume = Math.max(0, Math.min(4, volume));
     setParticipantVolumes(prev => ({ ...prev, [identity]: clampedVolume }));
-    const audioElement = document.getElementById("audio-" + identity) as HTMLAudioElement;
-    if (audioElement) audioElement.volume = clampedVolume;
+
+    // Use gain node if available (for > 100% boost)
+    const gainNode = gainNodesRef.current.get(identity);
+    if (gainNode) {
+      gainNode.gain.value = clampedVolume;
+    } else {
+      // Fallback to audio element (clamped to 1)
+      const audioElement = document.getElementById("audio-" + identity) as HTMLAudioElement;
+      if (audioElement) audioElement.volume = Math.min(1, clampedVolume);
+    }
   }, []);
 
   const runDiagnostics = useCallback(async () => {
@@ -204,9 +243,29 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         if ("setPlayoutDelay" in track) (track as any).setPlayoutDelay(0.05);
         const audioElement = track.attach();
         audioElement.id = "audio-" + participant.identity;
-        const savedVolume = volumesRef.current[participant.identity];
-        if (savedVolume !== undefined) audioElement.volume = savedVolume;
         audioContainerRef.current?.appendChild(audioElement);
+        // Setup Web Audio gain node for volume boost beyond 100%
+        // Must be done after element is in DOM
+        setTimeout(() => {
+          if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+          const ctx = audioContextRef.current;
+          if (!sourceNodesRef.current.has(participant.identity)) {
+            try {
+              const source = ctx.createMediaElementSource(audioElement);
+              const gainNode = ctx.createGain();
+              source.connect(gainNode);
+              gainNode.connect(ctx.destination);
+              sourceNodesRef.current.set(participant.identity, source);
+              gainNodesRef.current.set(participant.identity, gainNode);
+              const savedVolume = volumesRef.current[participant.identity] ?? 1;
+              gainNode.gain.value = savedVolume;
+            } catch (e) {
+              console.warn("[LiveKit] Failed to create gain node:", e);
+              const savedVolume = volumesRef.current[participant.identity];
+              if (savedVolume !== undefined) audioElement.volume = Math.min(1, savedVolume);
+            }
+          }
+        }, 0);
       }
     } else if (track.kind === Track.Kind.Video) {
       // Detect screen share either by track source OR by participant being a WHIP ingress (-stream suffix)
@@ -251,6 +310,9 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         setScreenShareInfo(prev => prev ? { ...prev, audioTrack: null } : null);
       } else {
         track.detach().forEach((el) => el.remove());
+        // Cleanup gain nodes
+        sourceNodesRef.current.delete(participant.identity);
+        gainNodesRef.current.delete(participant.identity);
       }
     } else if (track.kind === Track.Kind.Video) {
       const isScreenShare = track.source === Track.Source.ScreenShare ||
@@ -400,8 +462,18 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const toggleMute = useCallback(async () => {
     const room = roomRef.current; if (!room) return;
     const newMuted = !isMuted;
-    try { await room.localParticipant.setMicrophoneEnabled(!newMuted); setIsMuted(newMuted); updateParticipants(); } catch (err) { console.error("[LiveKit] Toggle mute error:", err); }
-  }, [isMuted, updateParticipants]);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(!newMuted);
+      setIsMuted(newMuted);
+      // Unmuting forces undeafen (can't be deafened and unmuted)
+      if (!newMuted && isDeafened) {
+        setIsDeafened(false);
+        const audioElements = audioContainerRef.current?.querySelectorAll("audio");
+        audioElements?.forEach((audio) => { audio.muted = false; });
+      }
+      updateParticipants();
+    } catch (err) { console.error("[LiveKit] Toggle mute error:", err); }
+  }, [isMuted, isDeafened, updateParticipants]);
 
   const toggleDeafen = useCallback(() => {
     const newDeafened = !isDeafened; setIsDeafened(newDeafened);

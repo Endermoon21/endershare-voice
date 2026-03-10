@@ -218,6 +218,7 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
         name: p.name,
         isSpeaking: p.isSpeaking,
         isMuted: p.isMuted,
+        isScreenSharing: p.isScreenSharing,
       }));
     }
     return roomParticipants[roomName] || [];
@@ -241,7 +242,11 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
 
   return (
     <Box direction="Column" gap="100">
-      {categories.filter(cat => cat != null).map(category => (
+      {categories.filter(cat => cat != null).map(category => {
+        // Check if selected room is in this category
+        const hasSelectedChild = selectedRoomId && category.channels.some(ch => ch.id === selectedRoomId);
+
+        return (
         <DraggableCategory
           key={category.id}
           id={category.id}
@@ -250,6 +255,7 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
           onToggle={() => toggleCategoryCollapsed(category.id)}
           onDragging={setDraggingItem}
           disabled={draggingItem?.id === category.id && draggingItem?.type === 'category'}
+          selectedChildId={hasSelectedChild ? selectedRoomId : undefined}
         >
           {category.channels.filter(ch => ch != null).map(channel => {
             const isVoice = channel.type === 'voice';
@@ -279,7 +285,8 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
             );
           })}
         </DraggableCategory>
-      ))}
+        );
+      })}
     </Box>
   );
 }

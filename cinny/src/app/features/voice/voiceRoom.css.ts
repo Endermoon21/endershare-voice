@@ -1,4 +1,4 @@
-import { style, keyframes } from "@vanilla-extract/css";
+import { style, keyframes, globalStyle } from "@vanilla-extract/css";
 import { color, config } from "folds";
 
 const fadeSlideIn = keyframes({
@@ -118,6 +118,20 @@ export const TileVideoContainer = style({
   alignItems: "center",
   justifyContent: "center",
   overflow: "hidden",
+});
+
+// Ensure video scales properly in fullscreen
+globalStyle(`${TileVideoContainer} video`, {
+  maxWidth: "100%",
+  maxHeight: "100%",
+  objectFit: "contain",
+});
+
+globalStyle(`${TileVideoContainer} video:fullscreen`, {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",
+  backgroundColor: "#000",
 });
 
 // Container for avatar - fills tile, centers avatar

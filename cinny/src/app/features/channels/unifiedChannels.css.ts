@@ -281,6 +281,27 @@ export const ParticipantName = style({
   whiteSpace: 'nowrap',
 });
 
+// Activity badges for participants
+export const LiveBadge = style({
+  backgroundColor: '#eb4034',
+  color: '#fff',
+  fontSize: '9px',
+  fontWeight: 700,
+  padding: '1px 4px',
+  borderRadius: '3px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  flexShrink: 0,
+});
+
+// Mute icon for participants
+export const ParticipantMutedIcon = style({
+  width: '12px',
+  height: '12px',
+  flexShrink: 0,
+  opacity: 0.7,
+});
+
 // Category actions
 export const CategoryActions = style({
   display: 'flex',

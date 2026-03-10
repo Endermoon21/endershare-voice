@@ -656,6 +656,8 @@ export const ProfilePopup = style({
   borderRadius: '8px',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
   border: `1px solid ${butter.border}`,
+  // Slide up animation
+  animation: `${fadeIn} 0.15s ${discordEase}`,
 });
 
 export const ProfileItem = style({
