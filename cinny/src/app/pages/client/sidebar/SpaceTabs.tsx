@@ -360,14 +360,29 @@ const useDnDMonitor = (
       throw Error('Scroll element ref not configured');
     }
 
+    // Type guard to check if item is a valid SidebarDraggable
+    const isSidebarDraggable = (item: unknown): item is SidebarDraggable => {
+      if (typeof item === 'string') return true;
+      if (typeof item === 'object' && item !== null && 'folder' in item) return true;
+      return false;
+    };
+
     return combine(
       monitorForElements({
         onDrop: ({ source, location }) => {
           onDragging(undefined);
           const { dropTargets } = location.current;
           if (dropTargets.length === 0) return;
-          const item = source.data.item as SidebarDraggable;
-          const containerItem = dropTargets[0].data.item as SidebarDraggable;
+
+          // Only process sidebar drag events, skip channel drag events
+          const rawItem = source.data.item;
+          const rawContainer = dropTargets[0].data.item;
+          if (!isSidebarDraggable(rawItem) || !isSidebarDraggable(rawContainer)) {
+            return;
+          }
+
+          const item = rawItem as SidebarDraggable;
+          const containerItem = rawContainer as SidebarDraggable;
           const instructionType = dropTargets[0].data.instructionType as
             | InstructionType
             | undefined;
