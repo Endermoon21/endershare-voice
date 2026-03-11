@@ -223,6 +223,8 @@ export function UnifiedChannelList({ spaceId, scrollRef, getToLink }: UnifiedCha
         isSpeaking: p.isSpeaking,
         isMuted: p.isMuted,
         isScreenSharing: p.isScreenSharing,
+        isCameraEnabled: p.isCameraEnabled,
+        isLocal: p.isLocal,
       }));
     }
     return roomParticipants[roomName] || [];
