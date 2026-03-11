@@ -84,25 +84,22 @@ export const MainContent = style({
 });
 
 // Participant grid that scales to fit without scrolling (Discord-style)
-// Grid columns are set dynamically via CSS variable --grid-cols
+// Grid columns/rows are set dynamically via CSS variables
 export const ParticipantGrid = style({
   display: 'grid',
-  // Columns set via CSS variable, default to 2
-  // Using minmax(0, 1fr) to allow shrinking
+  // Columns and rows set via CSS variables, using minmax(0, 1fr) to allow shrinking
   gridTemplateColumns: 'repeat(var(--grid-cols, 2), minmax(0, 1fr))',
-  // Rows: auto-fit to available height, capped at reasonable size
-  gridAutoRows: '1fr',
+  gridTemplateRows: 'repeat(var(--grid-rows, 2), minmax(0, 1fr))',
   gap: config.space.S200,
+  // Fill the flex container
   flex: 1,
-  minHeight: 0, // Critical for grid to shrink within flex container
-  maxHeight: '100%',
+  minHeight: 0,
   width: '100%',
   padding: config.space.S200,
-  // Ensure grid doesn't overflow
-  overflow: 'hidden',
   boxSizing: 'border-box',
-  alignContent: 'center', // Center all rows vertically
-  justifyItems: 'center', // Center items horizontally in cells
+  // Stretch items to fill their cells
+  alignItems: 'stretch',
+  justifyItems: 'stretch',
 });
 
 // Compact participant strip for when streaming
@@ -117,25 +114,20 @@ export const ParticipantStrip = style({
 export const ParticipantTile = style({
   backgroundColor: color.Surface.Container,
   borderRadius: config.radii.R400,
-  padding: config.space.S300,
+  padding: config.space.S200,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: config.space.S200,
+  gap: config.space.S100,
   transition: 'box-shadow 0.2s',
-  // Grid child - aspect-ratio for square shape
-  aspectRatio: '1',
-  // Fill the cell but don't exceed cell size
-  width: '100%',
-  height: '100%',
-  // Max size cap for large cells
-  maxWidth: '200px',
-  maxHeight: '200px',
-  minWidth: '80px',
-  minHeight: '80px',
   boxSizing: 'border-box',
   overflow: 'hidden',
+  // Fill the grid cell completely
+  width: '100%',
+  height: '100%',
+  minWidth: 0,
+  minHeight: 0,
 });
 
 // Compact tile for strip view during streaming
