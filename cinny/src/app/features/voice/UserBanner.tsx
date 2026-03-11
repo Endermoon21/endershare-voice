@@ -78,6 +78,7 @@ export function UserBanner() {
     toggleDeafen,
     room,
   } = useLiveKitContext();
+  // isMuted and isDeafened still needed for mute/deafen buttons
 
   const deviceSelection = useDeviceSelection(room);
 
@@ -142,31 +143,13 @@ export function UserBanner() {
             ) : (
               <span>{displayName.charAt(0).toUpperCase()}</span>
             )}
-            {/* Status badge - show mute/deafen icons when active, otherwise show online status */}
-            {isConnected && (isMuted || isDeafened) ? (
-              <div className={css.UserMuteStatusBadge}>
-                {isDeafened ? (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 14h-1.343" />
-                    <path d="m2 2 20 20" />
-                    <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.636-6.364" />
-                  </svg>
-                ) : (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m2 2 20 20" />
-                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
-                    <path d="M12 19v3" />
-                  </svg>
-                )}
-              </div>
-            ) : (
-              <div
-                className={classNames(css.UserStatusBadge, {
-                  [css.UserStatusInCall]: isConnected,
-                  [css.UserStatusOnline]: !isConnected,
-                })}
-              />
-            )}
+            {/* Status badge - just show online/in-call status */}
+            <div
+              className={classNames(css.UserStatusBadge, {
+                [css.UserStatusInCall]: isConnected,
+                [css.UserStatusOnline]: !isConnected,
+              })}
+            />
           </div>
           <div className={css.UserDetails}>
             <span className={css.UserName}>{displayName}</span>

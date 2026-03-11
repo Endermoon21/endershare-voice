@@ -344,7 +344,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isMuted: !local.isMicrophoneEnabled,
       isLocal: true,
       isScreenSharing: local.isScreenShareEnabled || isNativeStreaming, // Include native streaming
-      isCameraEnabled: local.isCameraEnabled,
+      isCameraEnabled: isCameraEnabled || local.isCameraEnabled, // Use React state OR LiveKit state
       volume: 1
     });
     room.remoteParticipants.forEach((p) => {
@@ -362,7 +362,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       });
     });
     setParticipants(allParticipants);
-  }, [isNativeStreaming]);
+  }, [isNativeStreaming, isCameraEnabled]);
 
   const connect = useCallback(async (roomName: string, displayName: string) => {
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
