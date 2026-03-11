@@ -318,10 +318,11 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
 
             let skip_titles = [
                 "Program Manager", "Windows Input Experience", "Microsoft Text Input",
-                "NVIDIA GeForce Overlay", "AMD Software", "Settings", "Task View", "Search", "",
+                "NVIDIA GeForce Overlay", "AMD Software", "Task View", "Search",
             ];
 
-            if skip_titles.iter().any(|&s| title.starts_with(s) || title == s) {
+            // Skip system windows
+            if skip_titles.iter().any(|&s| title.starts_with(s)) {
                 data.skipped.push(SkipInfo {
                     title: title.clone(),
                     reason: "skip_titles".to_string()
