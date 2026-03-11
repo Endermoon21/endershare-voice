@@ -343,10 +343,21 @@ fn build_audio_capture() -> String {
 
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
-    // Build WHIP sink properties
-    // Using minimal configuration - whipclientsink auto-negotiates encoding
+    let bitrate_bps = (config.bitrate * 1000) as u64;
+    let start_bitrate = bitrate_bps * 3 / 4; // Start at 75% of max for faster ramp
+
+    // Build WHIP sink properties with bitrate configuration
     let mut whip_props = format!(
-        "whipclientsink name=whip signaller::whip-endpoint=\"{}\"",
+        "whipclientsink name=whip \
+video-caps=\"video/x-h264,profile=constrained-baseline\" \
+start-bitrate={} \
+min-bitrate=500000 \
+max-bitrate={} \
+do-fec=true \
+do-retransmission=true \
+signaller::whip-endpoint=\"{}\"",
+        start_bitrate,
+        bitrate_bps,
         config.whip_url
     );
 
