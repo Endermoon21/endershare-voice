@@ -34,7 +34,6 @@ export function VoiceBanner() {
     setNoiseFilterEnabled,
     isNoiseFilterSupported,
     isNativeStreaming,
-    isCameraEnabled,
   } = useLiveKitContext();
 
   const [showModal, setShowModal] = useState(false);
@@ -142,18 +141,6 @@ export function VoiceBanner() {
           <div className={css.VoiceStatusSection}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 2 }}>
               <span className={css.VoiceConnectedLabel}>Voice Connected</span>
-              {isCameraEnabled && (
-                <span style={{
-                  backgroundColor: '#5865F2',
-                  color: '#fff',
-                  padding: '1px 5px',
-                  borderRadius: '3px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                }}>VIDEO</span>
-              )}
               {isNativeStreaming && (
                 <span style={{
                   backgroundColor: '#ED4245',
