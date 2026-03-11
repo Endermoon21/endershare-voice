@@ -343,22 +343,10 @@ fn build_audio_capture() -> String {
 
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
-    let bitrate_bps = (config.bitrate * 1000) as u64;
-    let start_bitrate = bitrate_bps * 3 / 4; // Start at 75% of max for faster ramp
-
     // Build WHIP sink properties
+    // Using minimal configuration - whipclientsink auto-negotiates encoding
     let mut whip_props = format!(
-        "whipclientsink name=whip \
-video-caps=\"video/x-h264,profile=constrained-baseline\" \
-congestion-control=gcc \
-start-bitrate={} \
-min-bitrate=500000 \
-max-bitrate={} \
-do-fec=true \
-do-retransmission=true \
-signaller::whip-endpoint=\"{}\"",
-        start_bitrate,
-        bitrate_bps,
+        "whipclientsink name=whip signaller::whip-endpoint=\"{}\"",
         config.whip_url
     );
 
@@ -382,10 +370,11 @@ signaller::whip-endpoint=\"{}\"",
 
     if config.audio_enabled {
         // Video + Audio pipeline using whipclientsink's multiple pad support
+        // Named element must be defined FIRST, then streams connect to it via whip.
         let audio_pipeline = build_audio_capture();
         format!(
-            "{} ! whip. {} ! whip. {}",
-            video_pipeline, audio_pipeline, whip_props
+            "{} {} ! whip. {} ! whip.",
+            whip_props, video_pipeline, audio_pipeline
         )
     } else {
         // Video-only pipeline

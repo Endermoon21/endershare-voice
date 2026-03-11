@@ -102,8 +102,7 @@ export function VoiceCallView() {
     disconnect,
     toggleMute,
     toggleDeafen,
-
-    closeCallView,
+    setShowVoiceView,
     getScreenShareElement,
   } = useLiveKitContext();
 
@@ -151,7 +150,7 @@ export function VoiceCallView() {
               </div>
             )}
           </div>
-          <button className={css.CloseBtn} onClick={closeCallView} title="Minimize">
+          <button className={css.CloseBtn} onClick={() => setShowVoiceView(false)} title="Minimize">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 13H5v-2h14v2z" />
             </svg>

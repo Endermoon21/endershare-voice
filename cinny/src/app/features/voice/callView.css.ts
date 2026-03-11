@@ -90,17 +90,19 @@ export const ParticipantGrid = style({
   // Columns set via CSS variable, default to 2
   // Using minmax(0, 1fr) to allow shrinking
   gridTemplateColumns: 'repeat(var(--grid-cols, 2), minmax(0, 1fr))',
-  // Rows also use CSS variable for row count
-  gridTemplateRows: 'repeat(var(--grid-rows, 2), minmax(0, 1fr))',
+  // Rows: auto-fit to available height, capped at reasonable size
+  gridAutoRows: '1fr',
   gap: config.space.S200,
   flex: 1,
   minHeight: 0, // Critical for grid to shrink within flex container
+  maxHeight: '100%',
   width: '100%',
   padding: config.space.S200,
   // Ensure grid doesn't overflow
   overflow: 'hidden',
   boxSizing: 'border-box',
-  placeItems: 'center', // Center items in their cells
+  alignContent: 'center', // Center all rows vertically
+  justifyItems: 'center', // Center items horizontally in cells
 });
 
 // Compact participant strip for when streaming
@@ -122,14 +124,16 @@ export const ParticipantTile = style({
   justifyContent: 'center',
   gap: config.space.S200,
   transition: 'box-shadow 0.2s',
-  // Grid child - use aspect-ratio to maintain square shape
-  // Width/height constrained by grid cell
+  // Grid child - aspect-ratio for square shape
   aspectRatio: '1',
-  minWidth: 0,
-  minHeight: 0,
-  // Size relative to cell, with max constraints
-  width: 'min(100%, 250px)',
-  height: 'min(100%, 250px)',
+  // Fill the cell but don't exceed cell size
+  width: '100%',
+  height: '100%',
+  // Max size cap for large cells
+  maxWidth: '200px',
+  maxHeight: '200px',
+  minWidth: '80px',
+  minHeight: '80px',
   boxSizing: 'border-box',
   overflow: 'hidden',
 });

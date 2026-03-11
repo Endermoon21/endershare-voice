@@ -150,7 +150,8 @@ export function DraggableChannel({
   const dropState = useDropTarget(dragItem, targetRef);
   const dropType = dropState?.type;
 
-  // Filter out ingress users for voice channels, but track who is streaming
+  // Filter out ingress users (-stream suffix) for display
+  // Track streaming identities to show LIVE badge on the original user
   const streamingIdentities = new Set(
     participants
       .filter(p => p.identity.endsWith('-stream'))
@@ -160,7 +161,7 @@ export function DraggableChannel({
     .filter(p => !p.identity.endsWith('-stream'))
     .map(p => ({
       ...p,
-      // Show as streaming if participant or their -stream counterpart is streaming
+      // Show as streaming if participant has isScreenSharing OR their -stream counterpart exists
       isScreenSharing: p.isScreenSharing || streamingIdentities.has(p.identity),
     }));
 

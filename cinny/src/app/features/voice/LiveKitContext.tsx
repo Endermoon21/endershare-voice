@@ -72,6 +72,7 @@ interface LiveKitContextValue {
   setNoiseFilterEnabled: (enabled: boolean) => Promise<void>;
   isNoiseFilterSupported: boolean;
   isNativeStreaming: boolean;
+  setIsNativeStreaming: (streaming: boolean) => void;
   currentIngressId: string | null;
   setCurrentIngressId: (id: string | null) => void;
 }
@@ -609,6 +610,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       setNoiseFilterEnabled: noiseFilter.setNoiseFilterEnabled,
       isNoiseFilterSupported: noiseFilter.isSupported,
       isNativeStreaming,
+      setIsNativeStreaming,
       currentIngressId,
       setCurrentIngressId,
     }}>

@@ -140,7 +140,7 @@ interface StreamingModalProps {
 }
 
 export function StreamingModal({ onClose }: StreamingModalProps) {
-  const { isConnected, currentRoom, room, screenShareInfo, getScreenShareElement, setCurrentIngressId } = useLiveKitContext();
+  const { isConnected, currentRoom, room, screenShareInfo, getScreenShareElement, setCurrentIngressId, setIsNativeStreaming } = useLiveKitContext();
 
   // State
   const [gstreamerInfo, setGStreamerInfo] = useState<GStreamerInfo | null>(null);
@@ -355,6 +355,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
 
       await startNativeStream(config);
       setIsStreaming(true);
+      setIsNativeStreaming(true); // Update LiveKitContext immediately
     } catch (e: any) {
       setError(e.message || "Failed to start stream");
       setCreatingIngress(false);
@@ -376,6 +377,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
       await stopNativeStream();
       setIsStreaming(false);
       setStreamStatus(null);
+      setIsNativeStreaming(false); // Update LiveKitContext immediately
     } catch (e: any) {
       setError(e.message || "Failed to stop stream");
     } finally {
