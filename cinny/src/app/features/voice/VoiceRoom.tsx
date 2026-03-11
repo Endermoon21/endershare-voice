@@ -6,6 +6,8 @@ import { useLiveKitContext, VoiceParticipant } from "./LiveKitContext";
 import { useMatrixClient } from "../../hooks/useMatrixClient";
 import { useDeviceSelection } from "./useDeviceSelection";
 import { StreamingModal } from "./StreamingModal";
+import { stopNativeStream } from "./nativeStreaming";
+import { deleteWhipIngress } from "./SunshineController";
 import * as css from "./voiceRoom.css";
 
 // Color palette for user tiles (Discord-like accent colors)
@@ -677,7 +679,7 @@ export function VoiceRoom() {
   const {
     currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, connectionQuality,
     disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room,
-    isNativeStreaming
+    isNativeStreaming, currentIngressId, setCurrentIngressId, setIsNativeStreaming
   } = useLiveKitContext();
 
   const deviceSelection = useDeviceSelection(room);
@@ -690,6 +692,30 @@ export function VoiceRoom() {
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const [showCameraMenu, setShowCameraMenu] = useState(false);
   const [tileDimensions, setTileDimensions] = useState<{ width: number; height: number }>({ width: 300, height: 169 });
+  const [stoppingStream, setStoppingStream] = useState(false);
+
+  // Handle screen share button - stop stream directly or open modal
+  const handleScreenShareClick = useCallback(async () => {
+    if (isStreaming) {
+      // Stop stream directly without modal
+      setStoppingStream(true);
+      try {
+        if (currentIngressId) {
+          await deleteWhipIngress(currentIngressId);
+          setCurrentIngressId(null);
+        }
+        await stopNativeStream();
+        setIsNativeStreaming(false);
+      } catch (e) {
+        console.error("Failed to stop stream:", e);
+      } finally {
+        setStoppingStream(false);
+      }
+    } else {
+      // Open modal to start stream
+      setShowStreamModal(true);
+    }
+  }, [isStreaming, currentIngressId, setCurrentIngressId, setIsNativeStreaming]);
 
   // Use isNativeStreaming from context
   const isStreaming = isNativeStreaming;
@@ -962,10 +988,16 @@ export function VoiceRoom() {
 
           <button
             className={classNames(css.ControlBtn, { [css.ControlBtnGreen]: isStreaming })}
-            onClick={() => setShowStreamModal(true)}
-            title={isStreaming ? "End Stream" : "Share Screen"}
+            onClick={handleScreenShareClick}
+            disabled={stoppingStream}
+            title={isStreaming ? "Stop Streaming" : "Share Screen"}
           >
-            {isStreaming ? <ScreenShareActiveIcon /> : <ScreenShareIcon />}
+            {stoppingStream ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+                <circle cx="12" cy="12" r="10" opacity="0.25" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+            ) : isStreaming ? <ScreenShareActiveIcon /> : <ScreenShareIcon />}
           </button>
         </div>
         <button className={css.DisconnectBtn} onClick={disconnect} title="Disconnect">
