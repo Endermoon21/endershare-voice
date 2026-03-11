@@ -62,6 +62,16 @@ const MicOffSmallIcon = () => (
   </svg>
 );
 
+const HeadphonesOffSmallIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 14h-1.343" />
+    <path d="M9.128 3.47A9 9 0 0 1 21 12v3.343" />
+    <path d="m2 2 20 20" />
+    <path d="M20.414 20.414A2 2 0 0 1 19 21h-1a2 2 0 0 1-2-2v-3" />
+    <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.636-6.364" />
+  </svg>
+);
+
 const ScreenShareIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" />
@@ -480,7 +490,7 @@ interface ParticipantTileProps {
 function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, streamVideoElement, isLive, tileWidth, tileHeight }: ParticipantTileProps) {
   const [showPopup, setShowPopup] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const { participantVolumes, getCameraElement } = useLiveKitContext();
+  const { participantVolumes, getCameraElement, isDeafened } = useLiveKitContext();
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const volume = participantVolumes[participant.identity] ?? 1;
   const isLocalMuted = volume === 0;
@@ -627,6 +637,13 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
 
         {/* Status icons - bottom right, aligned with name badge */}
         <div style={{ position: "absolute", bottom: "12px", right: "12px", display: "flex", gap: "4px" }}>
+          {/* Deafen icon - only for local user */}
+          {participant.isLocal && isDeafened && (
+            <div className={classNames(css.TileStatusOverlay, css.TileStatusDeafened)} style={{ position: "relative" }}>
+              <HeadphonesOffSmallIcon />
+            </div>
+          )}
+          {/* Mute icon */}
           {isLocalMuted ? (
             <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)} style={{ position: "relative" }}>
               <VolumeMuteIcon />

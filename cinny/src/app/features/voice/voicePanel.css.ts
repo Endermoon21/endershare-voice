@@ -268,6 +268,22 @@ export const UserStatusInCall = style({
   boxShadow: '0 0 4px rgba(35, 165, 90, 0.5)',
 });
 
+// Mute/deafen status badge on avatar
+export const UserMuteStatusBadge = style({
+  position: 'absolute',
+  bottom: '-2px',
+  right: '-2px',
+  width: '16px',
+  height: '16px',
+  borderRadius: '50%',
+  backgroundColor: butter.danger,
+  border: `2px solid ${butter.background}`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#fff',
+});
+
 export const UserDetails = style({
   display: 'flex',
   flexDirection: 'column',
