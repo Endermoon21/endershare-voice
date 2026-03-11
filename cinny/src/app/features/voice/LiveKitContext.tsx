@@ -482,7 +482,9 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     const newDeafened = !isDeafened; setIsDeafened(newDeafened);
     const audioElements = audioContainerRef.current?.querySelectorAll("audio");
     audioElements?.forEach((audio) => { audio.muted = newDeafened; });
+    // Deafening also mutes, undeafening also unmutes
     if (newDeafened && !isMuted) toggleMute();
+    if (!newDeafened && isMuted) toggleMute();
   }, [isDeafened, isMuted, toggleMute]);
 
   const toggleCamera = useCallback(async () => {
