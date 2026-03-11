@@ -625,8 +625,8 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
           </div>
         )}
 
-        {/* Status icons - bottom right */}
-        <div style={{ position: "absolute", bottom: "50px", right: "12px", display: "flex", gap: "4px" }}>
+        {/* Status icons - bottom right, aligned with name badge */}
+        <div style={{ position: "absolute", bottom: "12px", right: "12px", display: "flex", gap: "4px" }}>
           {isLocalMuted ? (
             <div className={classNames(css.TileStatusOverlay, css.TileStatusMuted)} style={{ position: "relative" }}>
               <VolumeMuteIcon />
