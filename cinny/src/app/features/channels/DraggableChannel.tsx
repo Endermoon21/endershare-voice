@@ -72,6 +72,7 @@ interface ParticipantItemProps {
   isSpeaking?: boolean;
   isMuted?: boolean;
   isScreenSharing?: boolean;
+  isCameraEnabled?: boolean;
   avatarUrl?: string;
   displayName: string;
 }
@@ -81,6 +82,7 @@ const ParticipantItem = memo(function ParticipantItem({
   isSpeaking,
   isMuted,
   isScreenSharing,
+  isCameraEnabled,
   avatarUrl,
   displayName,
 }: ParticipantItemProps) {
@@ -106,6 +108,11 @@ const ParticipantItem = memo(function ParticipantItem({
       {/* Activity badges */}
       {isScreenSharing && (
         <span className={css.LiveBadge}>LIVE</span>
+      )}
+      {isCameraEnabled && (
+        <svg className={css.ParticipantCameraIcon} viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14, color: '#23a55a' }}>
+          <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4zM3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
+        </svg>
       )}
       {isMuted && (
         <svg className={css.ParticipantMutedIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -245,6 +252,7 @@ export function DraggableChannel({
                 isSpeaking={p.isSpeaking}
                 isMuted={p.isMuted}
                 isScreenSharing={p.isScreenSharing}
+                isCameraEnabled={(p as any).isCameraEnabled}
                 avatarUrl={avatarUrl}
                 displayName={displayName}
               />

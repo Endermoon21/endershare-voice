@@ -272,9 +272,6 @@ export function VoiceChannelSection() {
                     const displayName = profile?.displayName || getDisplayName(p.identity, p.name);
                     const avatarUrl = profile?.avatarUrl;
 
-                    // Debug: log participant camera state
-                    console.log('[VoiceChannelSection] Participant:', p.identity, 'isCameraEnabled:', (p as any).isCameraEnabled, 'full:', p);
-
                     return (
                       <Box key={p.identity} className={classNames(css.Participant, { [css.Speaking]: p.isSpeaking })} alignItems="Center" gap="200">
                         <Box className={classNames(css.ParticipantAvatar, { [css.ParticipantAvatarWithImage]: !!avatarUrl, [css.ParticipantAvatarSpeaking]: p.isSpeaking })}>
@@ -289,9 +286,9 @@ export function VoiceChannelSection() {
                           {(p as any).isScreenSharing && (
                             <span className={css.LiveBadge}>LIVE</span>
                           )}
-                          {/* Camera/Video icon - TEST: always show for local participant */}
-                          {((p as any).isCameraEnabled || (p as any).isLocal) && (
-                            <span className={css.CameraBadge} title="Camera on" style={{ color: (p as any).isCameraEnabled ? '#23a55a' : '#888' }}>
+                          {/* Camera/Video icon */}
+                          {(p as any).isCameraEnabled && (
+                            <span className={css.CameraBadge} title="Camera on">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4zM3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
                               </svg>
