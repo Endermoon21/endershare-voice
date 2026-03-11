@@ -354,6 +354,38 @@ export const QualityPillActive = style({
   },
 });
 
+// Audio checkbox
+export const AudioCheckbox = style({
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  padding: "12px 14px",
+  backgroundColor: butter.background,
+  border: `1px solid ${butter.border}`,
+  borderRadius: "8px",
+  cursor: "pointer",
+  transition: "all 0.15s",
+  ":hover": {
+    borderColor: "rgba(255, 251, 222, 0.15)",
+  },
+});
+
+globalStyle(`${AudioCheckbox} input`, {
+  width: "16px",
+  height: "16px",
+  accentColor: butter.accent,
+  cursor: "pointer",
+});
+
+export const AudioCheckboxLabel = style({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  fontSize: "13px",
+  fontWeight: 500,
+  color: butter.text,
+});
+
 // Settings
 export const SettingsToggle = style({
   display: "flex",

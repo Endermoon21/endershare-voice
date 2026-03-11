@@ -133,8 +133,8 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
             Ok(Ok(sources)) if !sources.is_empty() => Ok(sources),
             _ => {
                 Ok(vec![CaptureSource {
-                    id: "desktop".to_string(),
-                    name: "Desktop (Full Screen)".to_string(),
+                    id: "monitor:0".to_string(),
+                    name: "Display 1".to_string(),
                     source_type: "screen".to_string(),
                     width: None,
                     height: None,
@@ -145,8 +145,8 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
     #[cfg(not(target_os = "windows"))]
     {
         Ok(vec![CaptureSource {
-            id: "desktop".to_string(),
-            name: "Desktop".to_string(),
+            id: "monitor:0".to_string(),
+            name: "Display 1".to_string(),
             source_type: "screen".to_string(),
             width: None,
             height: None,
@@ -157,6 +157,9 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
 #[cfg(target_os = "windows")]
 fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT};
+    use windows::Win32::Graphics::Gdi::{
+        EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFOEXW,
+    };
     use windows::Win32::UI::WindowsAndMessaging::{
         EnumWindows, GetWindowRect, GetWindowTextLengthW, GetWindowTextW, IsWindowVisible,
         GetWindowLongW, GWL_EXSTYLE, WS_EX_TOOLWINDOW,
@@ -164,14 +167,78 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
 
     let mut sources = Vec::new();
 
-    sources.push(CaptureSource {
-        id: "desktop".to_string(),
-        name: "Desktop (Full Screen)".to_string(),
-        source_type: "screen".to_string(),
-        width: None,
-        height: None,
-    });
+    // Enumerate monitors
+    unsafe {
+        struct MonitorData {
+            sources: Vec<CaptureSource>,
+            index: u32,
+        }
 
+        unsafe extern "system" fn monitor_callback(
+            hmonitor: HMONITOR,
+            _hdc: HDC,
+            _rect: *mut RECT,
+            lparam: LPARAM,
+        ) -> BOOL {
+            let data = &mut *(lparam.0 as *mut MonitorData);
+
+            let mut info = MONITORINFOEXW::default();
+            info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+
+            if GetMonitorInfoW(hmonitor, &mut info.monitorInfo).as_bool() {
+                let width = (info.monitorInfo.rcMonitor.right - info.monitorInfo.rcMonitor.left) as u32;
+                let height = (info.monitorInfo.rcMonitor.bottom - info.monitorInfo.rcMonitor.top) as u32;
+
+                // Check if primary monitor
+                let is_primary = (info.monitorInfo.dwFlags & 1) != 0; // MONITORINFOF_PRIMARY = 1
+                let name = if is_primary {
+                    format!("Display {} (Primary)", data.index + 1)
+                } else {
+                    format!("Display {}", data.index + 1)
+                };
+
+                data.sources.push(CaptureSource {
+                    id: format!("monitor:{}", data.index),
+                    name,
+                    source_type: "screen".to_string(),
+                    width: Some(width),
+                    height: Some(height),
+                });
+
+                data.index += 1;
+            }
+
+            BOOL(1)
+        }
+
+        let mut monitor_data = MonitorData {
+            sources: Vec::new(),
+            index: 0,
+        };
+
+        let _ = EnumDisplayMonitors(
+            HDC::default(),
+            None,
+            Some(monitor_callback),
+            LPARAM(&mut monitor_data as *mut MonitorData as isize),
+        );
+
+        // Add monitors to main sources list
+        sources.extend(monitor_data.sources);
+    }
+
+    // Fallback if no monitors found
+    if sources.is_empty() {
+        sources.push(CaptureSource {
+            id: "monitor:0".to_string(),
+            name: "Display 1".to_string(),
+            source_type: "screen".to_string(),
+            width: None,
+            height: None,
+        });
+    }
+
+    // Enumerate windows
     unsafe {
         unsafe extern "system" fn enum_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
             let sources = &mut *(lparam.0 as *mut Vec<CaptureSource>);
@@ -216,7 +283,9 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
                     return BOOL(1);
                 }
 
-                if sources.len() >= 21 {
+                // Limit window count (monitors already added)
+                let window_count = sources.iter().filter(|s| s.source_type == "window").count();
+                if window_count >= 15 {
                     return BOOL(0);
                 }
 
@@ -246,18 +315,23 @@ fn build_video_capture(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "windows")]
     {
-        // Check if capturing a specific window or full desktop
-        // NOTE: Using DXGI (default) instead of WGC for better performance
-        // WGC is slow (~6 FPS) while DXGI achieves 60+ FPS
+        // Determine capture source type
         if config.source_id.starts_with("title=") {
-            // Window capture using window title (DXGI mode)
+            // Window capture using window title
             let title = &config.source_id[6..]; // Strip "title=" prefix
             video.push_str(&format!(
                 "d3d11screencapturesrc window-name=\"{}\" show-cursor=true",
                 title
             ));
+        } else if config.source_id.starts_with("monitor:") {
+            // Per-monitor capture
+            let monitor_index: i32 = config.source_id[8..].parse().unwrap_or(0);
+            video.push_str(&format!(
+                "d3d11screencapturesrc monitor-index={} show-cursor=true",
+                monitor_index
+            ));
         } else {
-            // Full desktop capture (DXGI mode - default)
+            // Default: primary monitor (index 0)
             video.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
         }
 
@@ -278,7 +352,6 @@ fn build_video_capture(config: &StreamConfig) -> String {
         video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
         // Download from GPU memory to system memory for whipclientsink
-        // Note: videoconvert removed - d3d11download output is already suitable
         video.push_str(" ! d3d11download");
     }
 
