@@ -58,6 +58,13 @@ const ChevronDownIcon = () => (
   </svg>
 );
 
+// Video camera icon (for avatar badge when camera is on)
+const VideoOnIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15 10l4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4zM3 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/>
+  </svg>
+);
+
 // Discord-style voice icon (smaller, for status)
 const VoiceConnectedIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -74,6 +81,7 @@ export function UserBanner() {
     currentRoom,
     isMuted,
     isDeafened,
+    isCameraEnabled,
     toggleMute,
     toggleDeafen,
     room,
@@ -143,13 +151,19 @@ export function UserBanner() {
             ) : (
               <span>{displayName.charAt(0).toUpperCase()}</span>
             )}
-            {/* Status badge - just show online/in-call status */}
+            {/* Status badge - show online/in-call status */}
             <div
               className={classNames(css.UserStatusBadge, {
                 [css.UserStatusInCall]: isConnected,
                 [css.UserStatusOnline]: !isConnected,
               })}
             />
+            {/* Camera badge when video is on */}
+            {isCameraEnabled && (
+              <div className={css.UserVideoBadge}>
+                <VideoOnIcon />
+              </div>
+            )}
           </div>
           <div className={css.UserDetails}>
             <span className={css.UserName}>{displayName}</span>
@@ -187,7 +201,9 @@ export function UserBanner() {
             </button>
             <button
               ref={muteRef}
-              className={css.ControlBtnDropdown}
+              className={classNames(css.ControlBtnDropdown, {
+                [css.ControlBtnDropdownActive]: isMuted,
+              })}
               onClick={handleMuteDropdown}
               disabled={!isConnected}
               title="Select input device"
@@ -212,7 +228,9 @@ export function UserBanner() {
             </button>
             <button
               ref={deafenRef}
-              className={css.ControlBtnDropdown}
+              className={classNames(css.ControlBtnDropdown, {
+                [css.ControlBtnDropdownActive]: isDeafened,
+              })}
               onClick={handleDeafenDropdown}
               disabled={!isConnected}
               title="Select output device"

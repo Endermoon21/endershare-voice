@@ -296,10 +296,10 @@ export const LiveBadge = style({
 
 // Mute icon for participants
 export const ParticipantMutedIcon = style({
-  width: '12px',
-  height: '12px',
+  width: '14px',
+  height: '14px',
   flexShrink: 0,
-  opacity: 0.7,
+  color: 'rgba(255, 251, 222, 0.5)',
 });
 
 // Camera icon for participants

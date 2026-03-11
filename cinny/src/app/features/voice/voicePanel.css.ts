@@ -284,6 +284,22 @@ export const UserMuteStatusBadge = style({
   color: '#fff',
 });
 
+// Video badge when camera is on
+export const UserVideoBadge = style({
+  position: 'absolute',
+  top: '-2px',
+  right: '-2px',
+  width: '14px',
+  height: '14px',
+  borderRadius: '50%',
+  backgroundColor: butter.success,
+  border: `2px solid ${butter.background}`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#fff',
+});
+
 export const UserDetails = style({
   display: 'flex',
   flexDirection: 'column',
@@ -403,6 +419,17 @@ export const ControlBtnDropdown = style({
   ':hover': {
     backgroundColor: 'rgba(255, 251, 222, 0.15)',
     color: butter.text,
+  },
+});
+
+// Active state for dropdown arrow (when muted/deafened)
+export const ControlBtnDropdownActive = style({
+  backgroundColor: 'rgba(242, 63, 67, 0.2)',
+  borderLeftColor: 'rgba(242, 63, 67, 0.3)',
+  color: butter.danger,
+  ':hover': {
+    backgroundColor: 'rgba(242, 63, 67, 0.3)',
+    color: butter.danger,
   },
 });
 
