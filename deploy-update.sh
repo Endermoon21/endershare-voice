@@ -1,6 +1,6 @@
 #!/bin/bash
 # Cinny-Min Update Deployment Script
-# Automates: Pull from VOLTA -> Upload to docker-host -> Sign -> Update JSON
+# Automates: Pull from VOLTA -> Upload to docker-host -> Sign -> Update JSON -> GitHub Release
 
 set -e
 
@@ -12,6 +12,7 @@ DOCKER_PASS="lancache123"
 VOLTA_BUILD_PATH="C:/Users/VOLTA/cinny-desktop/src-tauri/target/release/bundle/nsis"
 UPDATE_SERVER_PATH="/opt/cinny-downloads"
 TAURI_KEY_PATH="/opt/cinny-keys/tauri.key"
+GITHUB_REPO="Endermoon21/endershare-voice"
 
 # Colors
 RED='\033[0;31m'
@@ -29,30 +30,41 @@ if [ -z "$VERSION" ]; then
 fi
 
 BUNDLE_NAME="Cinny-Min_${VERSION}_x64-setup.nsis.zip"
+EXE_NAME="Cinny-Min_${VERSION}_x64-setup.exe"
 echo -e "${YELLOW}Deploying version: ${VERSION}${NC}"
 echo -e "${YELLOW}Bundle: ${BUNDLE_NAME}${NC}"
 
-# Step 1: Pull bundle from VOLTA
-echo -e "\n${GREEN}[1/4] Pulling bundle from VOLTA...${NC}"
+# Step 1: Pull bundle and exe from VOLTA
+echo -e "\n${GREEN}[1/5] Pulling bundle and exe from VOLTA...${NC}"
 TMP_BUNDLE="/tmp/${BUNDLE_NAME}"
+TMP_EXE="/tmp/${EXE_NAME}"
 sshpass -p "$VOLTA_PASS" scp -o StrictHostKeyChecking=no \
     "${VOLTA_HOST}:${VOLTA_BUILD_PATH}/${BUNDLE_NAME}" "$TMP_BUNDLE"
+sshpass -p "$VOLTA_PASS" scp -o StrictHostKeyChecking=no \
+    "${VOLTA_HOST}:${VOLTA_BUILD_PATH}/${EXE_NAME}" "$TMP_EXE"
 
 if [ ! -f "$TMP_BUNDLE" ]; then
     echo -e "${RED}Error: Failed to download bundle from VOLTA${NC}"
     exit 1
 fi
 
+if [ ! -f "$TMP_EXE" ]; then
+    echo -e "${RED}Error: Failed to download exe from VOLTA${NC}"
+    exit 1
+fi
+
 BUNDLE_SIZE=$(ls -lh "$TMP_BUNDLE" | awk '{print $5}')
-echo -e "Downloaded: ${BUNDLE_SIZE}"
+EXE_SIZE=$(ls -lh "$TMP_EXE" | awk '{print $5}')
+echo -e "Downloaded bundle: ${BUNDLE_SIZE}"
+echo -e "Downloaded exe: ${EXE_SIZE}"
 
 # Step 2: Upload to docker-host
-echo -e "\n${GREEN}[2/4] Uploading to update server...${NC}"
+echo -e "\n${GREEN}[2/5] Uploading to update server...${NC}"
 sshpass -p "$DOCKER_PASS" scp -o StrictHostKeyChecking=no \
     "$TMP_BUNDLE" "${DOCKER_HOST}:${UPDATE_SERVER_PATH}/"
 
 # Step 3: Sign the bundle
-echo -e "\n${GREEN}[3/4] Signing bundle...${NC}"
+echo -e "\n${GREEN}[3/5] Signing bundle...${NC}"
 SIGN_OUTPUT=$(sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "$DOCKER_HOST" \
     "cd ${UPDATE_SERVER_PATH} && ~/.cargo/bin/cargo-tauri signer sign -f ${TAURI_KEY_PATH} -p '' ${BUNDLE_NAME} 2>&1")
 
@@ -67,7 +79,7 @@ fi
 echo -e "Signature generated successfully"
 
 # Step 4: Update update.json
-echo -e "\n${GREEN}[4/4] Updating update.json...${NC}"
+echo -e "\n${GREEN}[4/5] Updating update.json...${NC}"
 PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Get release notes from git log (last commit message)
@@ -93,6 +105,25 @@ JSONEOF"
 sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "$DOCKER_HOST" \
     "chmod 644 ${UPDATE_SERVER_PATH}/${BUNDLE_NAME}*"
 
+# Step 5: Create GitHub Release
+echo -e "\n${GREEN}[5/5] Creating GitHub release...${NC}"
+TAG_NAME="v${VERSION}"
+
+# Check if release already exists
+if gh release view "$TAG_NAME" --repo "$GITHUB_REPO" &>/dev/null; then
+    echo -e "${YELLOW}Release ${TAG_NAME} already exists, updating...${NC}"
+    gh release delete "$TAG_NAME" --repo "$GITHUB_REPO" --yes 2>/dev/null || true
+fi
+
+# Create release with exe
+gh release create "$TAG_NAME" "$TMP_EXE" \
+    --repo "$GITHUB_REPO" \
+    --title "Cinny-Min ${VERSION}" \
+    --notes "$NOTES" \
+    --latest
+
+echo -e "GitHub release created: https://github.com/${GITHUB_REPO}/releases/tag/${TAG_NAME}"
+
 # Verify deployment
 echo -e "\n${GREEN}=== Deployment Complete ===${NC}"
 echo -e "Version: ${VERSION}"
@@ -103,6 +134,6 @@ echo -e "\n${YELLOW}Verifying update endpoint...${NC}"
 curl -s https://cinny-updates.endershare.org/update.json | head -5
 
 # Cleanup
-rm -f "$TMP_BUNDLE"
+rm -f "$TMP_BUNDLE" "$TMP_EXE"
 
 echo -e "\n${GREEN}Done!${NC}"
