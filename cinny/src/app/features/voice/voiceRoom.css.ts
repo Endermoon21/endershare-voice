@@ -70,30 +70,34 @@ export const QualityGood = style({ backgroundColor: color.Success.Container, col
 export const QualityPoor = style({ backgroundColor: color.Warning.Container, color: color.Warning.OnContainer });
 export const QualityBad = style({ backgroundColor: color.Critical.Container, color: color.Critical.OnContainer });
 
-// Discord-style: vertical stack of landscape tiles
+// Discord-style: responsive grid that scales with participant count
 export const ParticipantGrid = style({
   display: "flex",
-  flexDirection: "column",
+  flexWrap: "wrap",
   gap: "8px",
   width: "100%",
-  maxWidth: "700px",
+  height: "100%",
+  alignContent: "center",
+  justifyContent: "center",
+  padding: "8px",
+  boxSizing: "border-box",
 });
 
-// Discord-style: large landscape tile with colored background
+// Discord-style: tile with size controlled by inline style
 export const ParticipantTile = style({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   position: "relative",
   borderRadius: "8px",
-  width: "100%",
-  aspectRatio: "16 / 9",
-  backgroundColor: color.Primary.Container, // Default accent, will be overridden per-user
+  // Width/height set via inline style for dynamic sizing
+  backgroundColor: color.Primary.Container,
   transition: `background-color 0.15s ${discordEase}, box-shadow 0.15s ${discordEase}`,
   cursor: "default",
   overflow: "hidden",
   boxSizing: "border-box",
   border: "3px solid transparent",
+  flexShrink: 0,
 });
 
 export const ParticipantTileLarge = style({});
@@ -514,7 +518,7 @@ export const TileClickable = style({
 export const TileWrapper = style({
   position: "relative",
   display: "flex",
-  width: "100%",
+  // Width/height controlled by parent or inline style - no fixed width
 });
 
 // Legacy exports

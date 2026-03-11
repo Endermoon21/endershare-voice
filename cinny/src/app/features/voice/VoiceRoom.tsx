@@ -415,16 +415,69 @@ const PopOutIcon = () => (
   </svg>
 );
 
+// Calculate optimal tile size based on container and participant count
+function calculateTileSize(
+  containerWidth: number,
+  containerHeight: number,
+  tileCount: number,
+  gap: number = 8
+): { width: number; height: number } {
+  if (tileCount === 0 || containerWidth <= 0 || containerHeight <= 0) {
+    return { width: 300, height: 169 }; // 16:9 default
+  }
+
+  const aspectRatio = 16 / 9;
+  let bestLayout = { width: 0, height: 0, area: 0 };
+
+  for (let cols = 1; cols <= tileCount; cols++) {
+    const rows = Math.ceil(tileCount / cols);
+
+    const totalGapWidth = (cols - 1) * gap;
+    const totalGapHeight = (rows - 1) * gap;
+    const availableWidth = containerWidth - totalGapWidth;
+    const availableHeight = containerHeight - totalGapHeight;
+
+    if (availableWidth <= 0 || availableHeight <= 0) continue;
+
+    const maxTileWidth = availableWidth / cols;
+    const maxTileHeight = availableHeight / rows;
+
+    // Calculate tile size maintaining 16:9 aspect ratio
+    let tileWidth: number;
+    let tileHeight: number;
+
+    if (maxTileWidth / aspectRatio <= maxTileHeight) {
+      tileWidth = Math.floor(maxTileWidth);
+      tileHeight = Math.floor(tileWidth / aspectRatio);
+    } else {
+      tileHeight = Math.floor(maxTileHeight);
+      tileWidth = Math.floor(tileHeight * aspectRatio);
+    }
+
+    const area = tileWidth * tileHeight * tileCount;
+    if (area > bestLayout.area && tileWidth > 0 && tileHeight > 0) {
+      bestLayout = { width: tileWidth, height: tileHeight, area };
+    }
+  }
+
+  return {
+    width: Math.max(bestLayout.width, 200),
+    height: Math.max(bestLayout.height, 112),
+  };
+}
+
 interface ParticipantTileProps {
   participant: VoiceParticipant;
   avatarUrl?: string;
   displayName: string;
   isStreamTile?: boolean;
   streamVideoElement?: HTMLVideoElement | null;
-  isLive?: boolean; // Show LIVE badge (participant has active stream)
+  isLive?: boolean;
+  tileWidth?: number;
+  tileHeight?: number;
 }
 
-function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, streamVideoElement, isLive }: ParticipantTileProps) {
+function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, streamVideoElement, isLive, tileWidth, tileHeight }: ParticipantTileProps) {
   const [showPopup, setShowPopup] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const { participantVolumes, getCameraElement } = useLiveKitContext();
@@ -521,7 +574,11 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
           [css.ParticipantTileSpeaking]: participant.isSpeaking && !isLocalMuted && !isStreamTile,
           [css.StreamTile]: isStreamTile,
         })}
-        style={{ backgroundColor: hasVideo ? "#000" : tileColor }}
+        style={{
+          backgroundColor: hasVideo ? "#000" : tileColor,
+          width: tileWidth ? `${tileWidth}px` : undefined,
+          height: tileHeight ? `${tileHeight}px` : undefined,
+        }}
         onContextMenu={handleContextMenu}
         onMouseEnter={() => hasVideo && setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
@@ -610,10 +667,12 @@ export function VoiceRoom() {
 
   const muteButtonRef = useRef<HTMLDivElement>(null);
   const cameraButtonRef = useRef<HTMLDivElement>(null);
+  const mainAreaRef = useRef<HTMLDivElement>(null);
   const [profileCache, setProfileCache] = useState<Record<string, { avatarUrl?: string; displayName: string }>>({});
   const [showStreamModal, setShowStreamModal] = useState(false);
   const [showDeviceMenu, setShowDeviceMenu] = useState(false);
   const [showCameraMenu, setShowCameraMenu] = useState(false);
+  const [tileDimensions, setTileDimensions] = useState<{ width: number; height: number }>({ width: 300, height: 169 });
 
   // Use isNativeStreaming from context
   const isStreaming = isNativeStreaming;
@@ -651,6 +710,40 @@ export function VoiceRoom() {
     fetchProfiles();
   }, [participants, mx, profileCache]);
 
+  // Calculate tile sizes based on container size and participant count
+  useEffect(() => {
+    const mainArea = mainAreaRef.current;
+    if (!mainArea) return;
+
+    const recalculate = () => {
+      const rect = mainArea.getBoundingClientRect();
+      // Account for padding (16px on each side)
+      const containerWidth = rect.width - 32;
+      const containerHeight = rect.height - 32;
+
+      // Count visible participants (exclude ingress users ending with -stream)
+      const visibleCount = participants.filter(p => !p.identity.endsWith("-stream")).length;
+      // Add 1 for screen share tile if present
+      const totalTiles = visibleCount + (screenShareInfo ? 1 : 0);
+
+      if (totalTiles > 0) {
+        const newDimensions = calculateTileSize(containerWidth, containerHeight, totalTiles, 8);
+        setTileDimensions(newDimensions);
+      }
+    };
+
+    // Initial calculation
+    recalculate();
+
+    // Observe resize
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(recalculate);
+    });
+    observer.observe(mainArea);
+
+    return () => observer.disconnect();
+  }, [participants, screenShareInfo]);
+
   const roomDisplayName = currentRoom ? currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1) : "Voice Channel";
   const qualityText = connectionQuality?.quality || "connecting";
   const getQualityClass = () => {
@@ -672,7 +765,7 @@ export function VoiceRoom() {
         <div className={classNames(css.QualityBadge, getQualityClass())}>{qualityText}</div>
       </div>
 
-      <div className={css.MainArea}>
+      <div ref={mainAreaRef} className={css.MainArea}>
         {(() => {
           // Filter out ingress users (identity ending with -stream)
           const visibleParticipants = participants.filter(p => !p.identity.endsWith("-stream"));
@@ -708,6 +801,8 @@ export function VoiceRoom() {
                     displayName={profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}
                     isStreamTile
                     streamVideoElement={streamVideoEl}
+                    tileWidth={tileDimensions.width}
+                    tileHeight={tileDimensions.height}
                   />
                 )}
                 {/* Show regular participants */}
@@ -718,6 +813,8 @@ export function VoiceRoom() {
                     avatarUrl={profileCache[p.identity]?.avatarUrl}
                     displayName={profileCache[p.identity]?.displayName || p.name}
                     isLive={activeStreamerIds.has(p.identity)}
+                    tileWidth={tileDimensions.width}
+                    tileHeight={tileDimensions.height}
                   />
                 ))}
               </div>
