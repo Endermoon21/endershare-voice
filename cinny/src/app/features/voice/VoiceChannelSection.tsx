@@ -272,6 +272,9 @@ export function VoiceChannelSection() {
                     const displayName = profile?.displayName || getDisplayName(p.identity, p.name);
                     const avatarUrl = profile?.avatarUrl;
 
+                    // Debug: log participant camera state
+                    console.log('[VoiceChannelSection] Participant:', p.identity, 'isCameraEnabled:', (p as any).isCameraEnabled, 'full:', p);
+
                     return (
                       <Box key={p.identity} className={classNames(css.Participant, { [css.Speaking]: p.isSpeaking })} alignItems="Center" gap="200">
                         <Box className={classNames(css.ParticipantAvatar, { [css.ParticipantAvatarWithImage]: !!avatarUrl, [css.ParticipantAvatarSpeaking]: p.isSpeaking })}>
