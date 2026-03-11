@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import classNames from 'classnames';
 import { Portal } from 'folds';
 import { useLiveKitContext } from './LiveKitContext';
@@ -25,6 +25,13 @@ const DisconnectIcon = () => (
   </svg>
 );
 
+// Stop icon for stopping stream
+const StopIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="6" width="12" height="12" rx="2" />
+  </svg>
+);
+
 export function VoiceBanner() {
   const {
     currentRoom,
@@ -34,11 +41,40 @@ export function VoiceBanner() {
     setNoiseFilterEnabled,
     isNoiseFilterSupported,
     isNativeStreaming,
+    setIsNativeStreaming,
+    currentIngressId,
+    setCurrentIngressId,
   } = useLiveKitContext();
 
   const [showModal, setShowModal] = useState(false);
+  const [stoppingStream, setStoppingStream] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Stop stream handler
+  const handleStopStream = useCallback(async () => {
+    if (stoppingStream) return;
+    setStoppingStream(true);
+    try {
+      // Dynamic imports to avoid circular dependencies
+      const [{ stopNativeStream }, { deleteWhipIngress }] = await Promise.all([
+        import('./nativeStreaming'),
+        import('./SunshineController'),
+      ]);
+
+      // Delete ingress first
+      if (currentIngressId) {
+        await deleteWhipIngress(currentIngressId);
+        setCurrentIngressId(null);
+      }
+      await stopNativeStream();
+      setIsNativeStreaming(false);
+    } catch (e) {
+      console.error('Failed to stop stream:', e);
+    } finally {
+      setStoppingStream(false);
+    }
+  }, [stoppingStream, currentIngressId, setCurrentIngressId, setIsNativeStreaming]);
 
   const roomDisplayName = currentRoom
     ? currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1)
@@ -142,16 +178,33 @@ export function VoiceBanner() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', position: 'relative', zIndex: 2 }}>
               <span className={css.VoiceConnectedLabel}>Voice Connected</span>
               {isNativeStreaming && (
-                <span style={{
-                  backgroundColor: '#ED4245',
-                  color: '#fff',
-                  padding: '1px 5px',
-                  borderRadius: '3px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                }}>LIVE</span>
+                <button
+                  onClick={handleStopStream}
+                  disabled={stoppingStream}
+                  title="Stop Streaming"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    backgroundColor: '#ED4245',
+                    color: '#fff',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.02em',
+                    border: 'none',
+                    cursor: stoppingStream ? 'wait' : 'pointer',
+                    opacity: stoppingStream ? 0.7 : 1,
+                    transition: 'opacity 0.15s, background-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => { if (!stoppingStream) e.currentTarget.style.backgroundColor = '#c73b3e'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ED4245'; }}
+                >
+                  <StopIcon />
+                  {stoppingStream ? 'STOPPING' : 'LIVE'}
+                </button>
               )}
             </div>
             <span className={css.VoiceChannelName}>{roomDisplayName}</span>
