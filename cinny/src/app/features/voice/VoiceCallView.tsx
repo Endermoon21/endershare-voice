@@ -152,38 +152,68 @@ export function VoiceCallView() {
   useEffect(() => {
     // Don't run if viewing stream (grid is hidden)
     if (viewingStream) return;
-
-    const container = gridContainerRef.current;
-    if (!container || participants.length === 0) return;
+    if (participants.length === 0) return;
 
     const calculateAndSetLayout = () => {
-      const rect = container.getBoundingClientRect();
-      // Skip if container has no size yet
-      if (rect.width === 0 || rect.height === 0) return;
+      const container = gridContainerRef.current;
+      let containerWidth: number;
+      let containerHeight: number;
+
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        containerWidth = rect.width;
+        containerHeight = rect.height;
+      } else {
+        // Fallback: estimate based on viewport
+        containerWidth = window.innerWidth * 0.85;
+        containerHeight = window.innerHeight * 0.6;
+      }
+
+      // Skip if still no valid size
+      if (containerWidth <= 0 || containerHeight <= 0) return;
 
       const padding = 16; // S200 padding
       const gap = 8; // S200 gap
-      const containerWidth = rect.width - padding;
-      const containerHeight = rect.height - padding;
+      const availableWidth = containerWidth - padding;
+      const availableHeight = containerHeight - padding;
 
-      const layout = calculateOptimalLayout(containerWidth, containerHeight, participants.length, gap);
-      setGridLayout(layout);
+      const layout = calculateOptimalLayout(availableWidth, availableHeight, participants.length, gap);
+
+      // Only update if tileSize changed significantly (avoid jitter)
+      setGridLayout(prev => {
+        if (Math.abs(prev.tileSize - layout.tileSize) > 5 || prev.cols !== layout.cols) {
+          return layout;
+        }
+        return prev;
+      });
     };
 
-    // Double RAF to ensure layout is fully computed
+    // Initial calculation with delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      calculateAndSetLayout();
+    }, 50);
+
+    // Also try with RAF
     const rafId = requestAnimationFrame(() => {
       requestAnimationFrame(calculateAndSetLayout);
     });
 
     // Recalculate on resize
-    const resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(calculateAndSetLayout);
-    });
-    resizeObserver.observe(container);
+    const container = gridContainerRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+    if (container) {
+      resizeObserver = new ResizeObserver(calculateAndSetLayout);
+      resizeObserver.observe(container);
+    }
+
+    // Also listen for window resize as backup
+    window.addEventListener('resize', calculateAndSetLayout);
 
     return () => {
+      clearTimeout(timeoutId);
       cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', calculateAndSetLayout);
     };
   }, [participants.length, viewingStream]);
 

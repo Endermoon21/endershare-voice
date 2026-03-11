@@ -66,13 +66,14 @@ export const CloseBtn = style({
 });
 
 export const Content = style({
-  flex: 1,
+  flex: '1 1 0',
   minHeight: 0, // Critical for flex child to shrink
   overflow: 'hidden',
   padding: config.space.S400,
   display: 'flex',
   flexDirection: 'column',
   gap: config.space.S300,
+  position: 'relative',
 });
 
 // Main content area - grows to fill available space
@@ -89,10 +90,12 @@ export const ParticipantGrid = style({
   display: 'flex',
   flexWrap: 'wrap',
   gap: config.space.S200,
-  // Fill the flex container but never overflow
-  flex: 1,
-  minHeight: 0,
+  // Take all available space
+  position: 'relative',
+  flex: '1 1 auto',
   width: '100%',
+  height: '100%',
+  minHeight: 0,
   padding: config.space.S200,
   boxSizing: 'border-box',
   overflow: 'hidden',
