@@ -6,8 +6,6 @@ import { useLiveKitContext, VoiceParticipant } from "./LiveKitContext";
 import { useMatrixClient } from "../../hooks/useMatrixClient";
 import { useDeviceSelection } from "./useDeviceSelection";
 import { StreamingModal } from "./StreamingModal";
-import { stopNativeStream } from "./nativeStreaming";
-import { deleteWhipIngress } from "./SunshineController";
 import * as css from "./voiceRoom.css";
 
 // Color palette for user tiles (Discord-like accent colors)
@@ -679,7 +677,7 @@ export function VoiceRoom() {
   const {
     currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, connectionQuality,
     disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room,
-    isNativeStreaming, currentIngressId, setCurrentIngressId, setIsNativeStreaming
+    isNativeStreaming, stopStream
   } = useLiveKitContext();
 
   const deviceSelection = useDeviceSelection(room);
@@ -700,12 +698,7 @@ export function VoiceRoom() {
       // Stop stream directly without modal
       setStoppingStream(true);
       try {
-        if (currentIngressId) {
-          await deleteWhipIngress(currentIngressId);
-          setCurrentIngressId(null);
-        }
-        await stopNativeStream();
-        setIsNativeStreaming(false);
+        await stopStream();
       } catch (e) {
         console.error("Failed to stop stream:", e);
       } finally {
@@ -715,7 +708,7 @@ export function VoiceRoom() {
       // Open modal to start stream
       setShowStreamModal(true);
     }
-  }, [isStreaming, currentIngressId, setCurrentIngressId, setIsNativeStreaming]);
+  }, [isStreaming, stopStream]);
 
   // Use isNativeStreaming from context
   const isStreaming = isNativeStreaming;

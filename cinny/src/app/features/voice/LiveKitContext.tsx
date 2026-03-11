@@ -75,6 +75,7 @@ interface LiveKitContextValue {
   setIsNativeStreaming: (streaming: boolean) => void;
   currentIngressId: string | null;
   setCurrentIngressId: (id: string | null) => void;
+  stopStream: () => Promise<void>;
 }
 
 const LiveKitContext = createContext<LiveKitContextValue | null>(null);
@@ -583,6 +584,20 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} }
   }; }, []);
 
+  // Stop stream function - stops native streaming and cleans up ingress
+  const stopStream = useCallback(async () => {
+    try {
+      if (currentIngressId) {
+        await deleteIngress(currentIngressId);
+        setCurrentIngressId(null);
+      }
+      await stopNativeStream();
+      setIsNativeStreaming(false);
+    } catch (e) {
+      console.error("Failed to stop stream:", e);
+    }
+  }, [currentIngressId]);
+
   return (
     <LiveKitContext.Provider value={{
       room: roomRef.current,
@@ -615,6 +630,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       setIsNativeStreaming,
       currentIngressId,
       setCurrentIngressId,
+      stopStream,
     }}>
       {children}
     </LiveKitContext.Provider>
