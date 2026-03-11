@@ -1,12 +1,5 @@
 /**
- * Streaming Modal - Native GStreamer streaming with full controls
- * 
- * Features:
- * - Source selection (screens/windows)
- * - Quality presets (Performance, Balanced, Quality)
- * - Custom settings (resolution, fps, bitrate, encoder)
- * - Audio capture toggle
- * - Live streaming stats
+ * Streaming Modal - Clean, Discord-style native streaming UI
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -28,99 +21,77 @@ import {
 } from "./nativeStreaming";
 import { createWhipIngress, deleteWhipIngress, WhipIngressInfo } from "./SunshineController";
 import { Track } from "livekit-client";
-import * as css from "./voicePanel.css";
+import * as css from "./streamingModal.css";
 
-// Discord-style filled icons
+// Icons
 const CloseIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M18.4 4L12 10.4 5.6 4 4 5.6 10.4 12 4 18.4 5.6 20 12 13.6 18.4 20 20 18.4 13.6 12 20 5.6 18.4 4Z" />
   </svg>
 );
 
 const MonitorIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M4 2C2.897 2 2 2.897 2 4V15C2 16.103 2.897 17 4 17H11V19H7V21H17V19H13V17H20C21.103 17 22 16.103 22 15V4C22 2.897 21.103 2 20 2H4ZM4 4H20V15H4V4Z" />
   </svg>
 );
 
 const WindowIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
     <path d="M5 3C3.897 3 3 3.897 3 5V19C3 20.103 3.897 21 5 21H19C20.103 21 21 20.103 21 19V5C21 3.897 20.103 3 19 3H5ZM5 5H19V8H5V5ZM5 10H19V19H5V10Z" />
-    <circle cx="6.5" cy="6.5" r="1" />
-    <circle cx="9.5" cy="6.5" r="1" />
-    <circle cx="12.5" cy="6.5" r="1" />
   </svg>
 );
 
 const RefreshIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
     <path d="M17.65 6.35A7.96 7.96 0 0 0 12 4C7.58 4 4 7.58 4 12s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35Z" />
   </svg>
 );
 
-const ChevronDownIcon = () => (
+const SettingsIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+  </svg>
+);
+
+const StopIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41Z" />
+    <rect x="6" y="6" width="12" height="12" rx="2" />
   </svg>
 );
 
-const ChevronUpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41Z" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z" />
-  </svg>
-);
-
-const LiveIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z" opacity="0.4" />
-  </svg>
-);
-
-const GpuIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 4C4.897 4 4 4.897 4 6V18C4 19.103 4.897 20 6 20H18C19.103 20 20 19.103 20 18V6C20 4.897 19.103 4 18 4H6ZM6 6H18V18H6V6ZM8 8V16H16V8H8ZM1 10V14H3V10H1ZM21 10V14H23V10H21Z" />
-  </svg>
-);
-
-// Quality presets
-type QualityPreset = "performance" | "balanced" | "quality" | "custom";
+// Quality presets - simplified
+type QualityPreset = "720p" | "1080p" | "1080p+";
 
 interface PresetConfig {
   label: string;
-  description: string;
+  short: string;
   width: number;
   height: number;
   fps: number;
   bitrate: number;
 }
 
-const QUALITY_PRESETS: Record<Exclude<QualityPreset, "custom">, PresetConfig> = {
-  performance: {
-    label: "Performance",
-    description: "720p30 • Low latency",
+const QUALITY_PRESETS: Record<QualityPreset, PresetConfig> = {
+  "720p": {
+    label: "720p 30fps",
+    short: "720p",
     width: 1280,
     height: 720,
     fps: 30,
     bitrate: 3000,
   },
-  balanced: {
-    label: "Balanced",
-    description: "1080p60 • Recommended",
+  "1080p": {
+    label: "1080p 60fps",
+    short: "1080p",
     width: 1920,
     height: 1080,
     fps: 60,
     bitrate: 6000,
   },
-  quality: {
-    label: "Quality",
-    description: "1080p60 • High bitrate",
+  "1080p+": {
+    label: "1080p 60fps HQ",
+    short: "HQ",
     width: 1920,
     height: 1080,
     fps: 60,
@@ -128,19 +99,12 @@ const QUALITY_PRESETS: Record<Exclude<QualityPreset, "custom">, PresetConfig> = 
   },
 };
 
-// Resolution options for custom
-const RESOLUTIONS = [
-  { label: "720p", width: 1280, height: 720 },
-  { label: "1080p", width: 1920, height: 1080 },
-  { label: "1440p", width: 2560, height: 1440 },
-];
-
 interface StreamingModalProps {
   onClose: () => void;
 }
 
 export function StreamingModal({ onClose }: StreamingModalProps) {
-  const { isConnected, currentRoom, room, screenShareInfo, getScreenShareElement, setCurrentIngressId, setIsNativeStreaming } = useLiveKitContext();
+  const { isConnected, currentRoom, room, setCurrentIngressId, setIsNativeStreaming } = useLiveKitContext();
 
   // State
   const [gstreamerInfo, setGStreamerInfo] = useState<GStreamerInfo | null>(null);
@@ -160,36 +124,16 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
   const [showPreview, setShowPreview] = useState(false);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
 
-
   // Settings
-  const [preset, setPreset] = useState<QualityPreset>("balanced");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [encoder, setEncoder] = useState<"auto" | "nvenc" | "qsv" | "amf" | "x264">("auto");
-  const [customRes, setCustomRes] = useState(RESOLUTIONS[1]); // 1080p
-  const [customFps, setCustomFps] = useState(60);
-  const [customBitrate, setCustomBitrate] = useState(6000);
+  const [preset, setPreset] = useState<QualityPreset>("1080p");
+  const [sourceTab, setSourceTab] = useState<"screens" | "windows">("screens");
+  const [showSettings, setShowSettings] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
 
-  // Get effective settings based on preset
+  // Get effective settings
   const getEffectiveSettings = useCallback(() => {
-    if (preset === "custom") {
-      return {
-        width: customRes.width,
-        height: customRes.height,
-        fps: customFps,
-        bitrate: customBitrate,
-      };
-    }
     return QUALITY_PRESETS[preset];
-  }, [preset, customRes, customFps, customBitrate]);
-
-  // Get actual encoder
-  const getActualEncoder = useCallback((): "nvenc" | "qsv" | "amf" | "x264" => {
-    // GStreamer auto-selects the best encoder via whipclientsink
-    // We just return a placeholder value since GStreamer handles this
-    if (encoder !== "auto") return encoder;
-    return "x264"; // GStreamer will use mfh264enc or nvh264enc automatically
-  }, [encoder]);
+  }, [preset]);
 
   // Initialize - also check if already streaming
   useEffect(() => {
@@ -344,12 +288,11 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
         height: settings.height,
         fps: settings.fps,
         bitrate: settings.bitrate,
-        encoder: getActualEncoder(),
-        preset: getActualEncoder() === "nvenc" ? "p1" : "ultrafast",
+        encoder: "x264", // GStreamer auto-selects best encoder
+        preset: "ultrafast",
         audio_enabled: audioEnabled,
         bearer_token: ingress.streamKey,
         backend: 'gstreamer',
-        // TURN server for external connectivity (users not on Tailscale)
         turn_server: 'turn://livekit:turnpassword123@144.24.3.66:3478',
       };
 
@@ -389,10 +332,11 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
   const settings = getEffectiveSettings();
   const screens = sources.filter(s => s.source_type === "screen");
   const windows = sources.filter(s => s.source_type === "window");
+  const displayedSources = sourceTab === "screens" ? screens : windows;
 
   return (
     <Portal>
-      <div className={css.StreamModalOverlay} onClick={onClose}>
+      <div className={css.Overlay} onClick={onClose}>
         <FocusTrap
           focusTrapOptions={{
             initialFocus: false,
@@ -401,104 +345,64 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
             escapeDeactivates: true,
           }}
         >
-          <div className={css.StreamModal} onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <div className={css.StreamModalHeader}>
-            <div className={css.StreamModalTitle}>
-              {isStreaming ? (
-                <>
-                  <span className={css.StreamLiveIndicator}>
-                    <LiveIcon />
-                    LIVE
-                  </span>
-                  <span className={css.StreamDuration}>
-                    {streamStatus ? formatStreamDuration(streamStatus.duration_seconds) : "00:00"}
-                  </span>
-                </>
-              ) : (
-                "Screen Share"
+          <div className={css.Modal} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className={css.Header}>
+              <span className={css.Title}>
+                {isStreaming ? "Live" : "Screen Share"}
+              </span>
+              {isStreaming && (
+                <span className={css.LiveBadge}>
+                  {streamStatus ? formatStreamDuration(streamStatus.duration_seconds) : "00:00"}
+                </span>
               )}
+              <button className={css.CloseBtn} onClick={onClose}>
+                <CloseIcon />
+              </button>
             </div>
-            <button className={css.StreamModalClose} onClick={onClose}>
-              <CloseIcon />
-            </button>
-          </div>
 
-          {/* Content */}
-          <div className={css.StreamModalBody}>
-            {/* Error */}
-            {error && <div className={css.StreamError}>{error}</div>}
-
-            {/* Not connected */}
-            {!isConnected && (
-              <div className={css.StreamWarning}>
-                Join a voice channel to start streaming
-              </div>
+            {/* Error/Warning */}
+            {error && <div className={css.Alert}>{error}</div>}
+            {!isConnected && !error && (
+              <div className={css.AlertWarning}>Join a voice channel first</div>
             )}
 
-            {/* Streaming status */}
+            {/* Live Panel */}
             {isStreaming && (
-              <div className={css.StreamLivePanel}>
-                <div className={css.StreamLiveInfo}>
-                  <div className={css.StreamLiveSource}>
-                    {selectedSource?.source_type === "screen" ? <MonitorIcon /> : <WindowIcon />}
-                    <span>Streaming: {selectedSource?.name || "Unknown"}</span>
-                  </div>
-                  <div className={css.StreamLiveStats}>
-                    <span>{settings.width}x{settings.height}</span>
-                    <span>•</span>
-                    <span>{settings.fps} FPS</span>
-                    <span>•</span>
-                    <span>{settings.bitrate / 1000} Mbps</span>
-                    <span>•</span>
-                    <span>{getActualEncoder().toUpperCase()}</span>
-                  </div>
+              <div className={css.LivePanel}>
+                <div className={css.LiveSource}>
+                  {selectedSource?.source_type === "screen" ? <MonitorIcon /> : <WindowIcon />}
+                  <span>{selectedSource?.name || "Screen"}</span>
                 </div>
-                <button 
-                  className={css.StreamStopButton} 
-                  onClick={handleStopStream}
-                  disabled={stopping}
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                  {stopping ? "Stopping..." : "Stop Streaming"}
-                </button>
-                <div style={{ fontSize: "12px", color: "rgba(255,251,222,0.5)", textAlign: "center", marginTop: "8px" }}>
-                  Click the screen share button in the toolbar to return to this panel
+                <div className={css.LiveStats}>
+                  {settings.width}x{settings.height} • {settings.fps}fps • {settings.bitrate / 1000}Mbps
                 </div>
-                <button 
-                  
-                  onClick={() => setShowPreview(!showPreview)}
-                  style={{ 
-                    marginTop: "12px",
-                    padding: "8px 16px",
-                    background: showPreview ? "rgba(255,251,222,0.2)" : "rgba(255,251,222,0.1)",
-                    border: "1px solid rgba(255,251,222,0.2)",
-                    borderRadius: "6px",
-                    color: "#FFFBDE",
-                    cursor: "pointer",
-                    fontSize: "13px"
-                  }}
-                >
-                  {showPreview ? "Hide Preview" : "Show Preview"}
-                </button>
+
+                <div className={css.LiveActions}>
+                  <button
+                    className={css.PreviewBtn}
+                    onClick={() => setShowPreview(!showPreview)}
+                  >
+                    {showPreview ? "Hide" : "Preview"}
+                  </button>
+                  <button
+                    className={css.StopBtn}
+                    onClick={handleStopStream}
+                    disabled={stopping}
+                  >
+                    <StopIcon />
+                    {stopping ? "Stopping..." : "Stop"}
+                  </button>
+                </div>
+
                 {showPreview && (
-                  <div style={{
-                    marginTop: "12px",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                    background: "#000",
-                    aspectRatio: "16/9",
-                    maxHeight: "200px"
-                  }}>
-                    <video 
+                  <div className={css.PreviewContainer}>
+                    <video
                       ref={previewVideoRef}
                       autoPlay
                       playsInline
                       muted
-                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      className={css.PreviewVideo}
                     />
                   </div>
                 )}
@@ -507,225 +411,114 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
 
             {/* Setup UI */}
             {!isStreaming && gstreamerInfo?.available && (
-              <>
-                {/* Source selection */}
-                <div className={css.StreamSection}>
-                  <div className={css.StreamSectionHeader}>
-                    <span>Select Source</span>
-                    <button
-                      className={css.StreamRefreshBtn}
-                      onClick={refreshSources}
-                      disabled={loading}
-                    >
-                      <RefreshIcon />
-                    </button>
-                  </div>
-
-                  <div className={css.StreamSourceGrid}>
-                    {/* Screens */}
-                    {screens.map((source) => (
-                      <button
-                        key={source.id}
-                        className={`${css.StreamSourceCard} ${selectedSource?.id === source.id ? css.StreamSourceCardSelected : ""}`}
-                        onClick={() => setSelectedSource(source)}
-                      >
-                        <div className={css.StreamSourcePreview}>
-                          <MonitorIcon />
-                        </div>
-                        <div className={css.StreamSourceInfo}>
-                          <span className={css.StreamSourceName}>{source.name}</span>
-                          {source.width && source.height && (
-                            <span className={css.StreamSourceRes}>{source.width}x{source.height}</span>
-                          )}
-                        </div>
-                        {selectedSource?.id === source.id && (
-                          <div className={css.StreamSourceCheck}><CheckIcon /></div>
-                        )}
-                      </button>
-                    ))}
-
-                    {/* Windows */}
-                    {windows.slice(0, 6).map((source) => (
-                      <button
-                        key={source.id}
-                        className={`${css.StreamSourceCard} ${selectedSource?.id === source.id ? css.StreamSourceCardSelected : ""}`}
-                        onClick={() => setSelectedSource(source)}
-                      >
-                        <div className={css.StreamSourcePreview}>
-                          <WindowIcon />
-                        </div>
-                        <div className={css.StreamSourceInfo}>
-                          <span className={css.StreamSourceName}>{source.name}</span>
-                        </div>
-                        {selectedSource?.id === source.id && (
-                          <div className={css.StreamSourceCheck}><CheckIcon /></div>
-                        )}
-                      </button>
-                    ))}
-
-                    {sources.length === 0 && !loading && (
-                      <div className={css.StreamSourceEmpty}>No sources found</div>
-                    )}
-                    {loading && sources.length === 0 && (
-                      <div className={css.StreamSourceEmpty}>Loading sources...</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quality presets */}
-                <div className={css.StreamSection}>
-                  <div className={css.StreamSectionHeader}>
-                    <span>Stream Quality</span>
-                  </div>
-
-                  <div className={css.StreamPresetGrid}>
-                    {(Object.entries(QUALITY_PRESETS) as [Exclude<QualityPreset, "custom">, PresetConfig][]).map(([key, config]) => (
-                      <button
-                        key={key}
-                        className={`${css.StreamPresetCard} ${preset === key ? css.StreamPresetCardSelected : ""}`}
-                        onClick={() => setPreset(key)}
-                      >
-                        <span className={css.StreamPresetLabel}>{config.label}</span>
-                        <span className={css.StreamPresetDesc}>{config.description}</span>
-                        {preset === key && <div className={css.StreamPresetCheck}><CheckIcon /></div>}
-                      </button>
-                    ))}
-                    <button
-                      className={`${css.StreamPresetCard} ${preset === "custom" ? css.StreamPresetCardSelected : ""}`}
-                      onClick={() => setPreset("custom")}
-                    >
-                      <span className={css.StreamPresetLabel}>Custom</span>
-                      <span className={css.StreamPresetDesc}>Configure manually</span>
-                      {preset === "custom" && <div className={css.StreamPresetCheck}><CheckIcon /></div>}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Custom settings */}
-                {preset === "custom" && (
-                  <div className={css.StreamSection}>
-                    <div className={css.StreamCustomGrid}>
-                      <div className={css.StreamControl}>
-                        <label>Resolution</label>
-                        <select
-                          value={`${customRes.width}x${customRes.height}`}
-                          onChange={(e) => {
-                            const [w, h] = e.target.value.split("x").map(Number);
-                            const res = RESOLUTIONS.find(r => r.width === w && r.height === h);
-                            if (res) setCustomRes(res);
-                          }}
-                          className={css.StreamSelect}
-                        >
-                          {RESOLUTIONS.map(r => (
-                            <option key={r.label} value={`${r.width}x${r.height}`}>{r.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className={css.StreamControl}>
-                        <label>Frame Rate</label>
-                        <select
-                          value={customFps}
-                          onChange={(e) => setCustomFps(Number(e.target.value))}
-                          className={css.StreamSelect}
-                        >
-                          <option value={30}>30 FPS</option>
-                          <option value={60}>60 FPS</option>
-                          <option value={120}>120 FPS</option>
-                        </select>
-                      </div>
-                      <div className={css.StreamControl}>
-                        <label>Bitrate</label>
-                        <select
-                          value={customBitrate}
-                          onChange={(e) => setCustomBitrate(Number(e.target.value))}
-                          className={css.StreamSelect}
-                        >
-                          <option value={3000}>3 Mbps</option>
-                          <option value={4000}>4 Mbps</option>
-                          <option value={6000}>6 Mbps</option>
-                          <option value={8000}>8 Mbps</option>
-                          <option value={10000}>10 Mbps</option>
-                          <option value={15000}>15 Mbps</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Advanced settings */}
-                <div className={css.StreamSection}>
+              <div className={css.Body}>
+                {/* Source Tabs */}
+                <div className={css.SourceTabs}>
                   <button
-                    className={css.StreamAdvancedToggle}
-                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className={`${css.SourceTab} ${sourceTab === "screens" ? css.SourceTabActive : ""}`}
+                    onClick={() => setSourceTab("screens")}
                   >
-                    <GpuIcon />
-                    <span>Advanced Settings</span>
-                    {showAdvanced ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                    <MonitorIcon /> Screens ({screens.length})
                   </button>
+                  <button
+                    className={`${css.SourceTab} ${sourceTab === "windows" ? css.SourceTabActive : ""}`}
+                    onClick={() => setSourceTab("windows")}
+                  >
+                    <WindowIcon /> Windows ({windows.length})
+                  </button>
+                  <button className={css.RefreshBtn} onClick={refreshSources} disabled={loading}>
+                    <RefreshIcon />
+                  </button>
+                </div>
 
-                  {showAdvanced && (
-                    <div className={css.StreamAdvancedPanel}>
-                      <div className={css.StreamControl}>
-                        <label>Encoder</label>
-                        <select
-                          value={encoder}
-                          onChange={(e) => setEncoder(e.target.value as any)}
-                          className={css.StreamSelect}
-                        >
-                          <option value="auto">
-                            Auto (Hardware)
-                          </option>
-                          <option value="nvenc">NVENC (NVIDIA)</option>
-                          <option value="qsv">QSV (Intel)</option>
-                          <option value="amf">AMF (AMD)</option>
-                          <option value="x264">x264 (CPU)</option>
-                        </select>
+                {/* Source List */}
+                <div className={css.SourceList}>
+                  {displayedSources.slice(0, 8).map((source) => (
+                    <button
+                      key={source.id}
+                      className={`${css.SourceItem} ${selectedSource?.id === source.id ? css.SourceItemSelected : ""}`}
+                      onClick={() => setSelectedSource(source)}
+                    >
+                      <div className={css.SourceIcon}>
+                        {source.source_type === "screen" ? <MonitorIcon /> : <WindowIcon />}
                       </div>
-
-                      <label className={css.StreamCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={audioEnabled}
-                          onChange={(e) => setAudioEnabled(e.target.checked)}
-                        />
-                        <span>Capture Audio (experimental)</span>
-                      </label>
-
-                      {gstreamerInfo && (
-                        <div className={css.StreamEncoderInfo}>
-                          GStreamer {gstreamerInfo.version} - Hardware encoding enabled
-                        </div>
-                      )}
-                    </div>
+                      <div className={css.SourceInfo}>
+                        <span className={css.SourceName}>{source.name}</span>
+                        {source.width && source.height && (
+                          <span className={css.SourceRes}>{source.width}x{source.height}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                  {displayedSources.length === 0 && !loading && (
+                    <div className={css.SourceEmpty}>No {sourceTab} found</div>
+                  )}
+                  {loading && displayedSources.length === 0 && (
+                    <div className={css.SourceEmpty}>Loading...</div>
                   )}
                 </div>
-              </>
-            )}
-          </div>
 
-          {/* Footer */}
-          {!isStreaming && gstreamerInfo?.available && (
-            <div className={css.StreamModalFooter}>
-              <div className={css.StreamSummary}>
-                {selectedSource && (
-                  <>
-                    <span>{settings.width}x{settings.height}</span>
-                    <span>•</span>
-                    <span>{settings.fps} FPS</span>
-                    <span>•</span>
-                    <span>{settings.bitrate / 1000} Mbps</span>
-                  </>
+                {/* Quality Pills */}
+                <div className={css.QualityRow}>
+                  <span className={css.QualityLabel}>Quality</span>
+                  <div className={css.QualityPills}>
+                    {(Object.keys(QUALITY_PRESETS) as QualityPreset[]).map((key) => (
+                      <button
+                        key={key}
+                        className={`${css.QualityPill} ${preset === key ? css.QualityPillActive : ""}`}
+                        onClick={() => setPreset(key)}
+                      >
+                        {QUALITY_PRESETS[key].short}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Settings Toggle */}
+                <button
+                  className={css.SettingsToggle}
+                  onClick={() => setShowSettings(!showSettings)}
+                >
+                  <SettingsIcon />
+                  <span>Settings</span>
+                  {audioEnabled && <span className={css.SettingsBadge}>Audio</span>}
+                </button>
+
+                {showSettings && (
+                  <div className={css.SettingsPanel}>
+                    <label className={css.SettingsCheckbox}>
+                      <input
+                        type="checkbox"
+                        checked={audioEnabled}
+                        onChange={(e) => setAudioEnabled(e.target.checked)}
+                      />
+                      <span>Capture audio</span>
+                    </label>
+                    {gstreamerInfo && (
+                      <span className={css.SettingsInfo}>
+                        GStreamer {gstreamerInfo.version}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-              <button
-                className={css.StreamStartButton}
-                onClick={handleStartStream}
-                disabled={!isConnected || !selectedSource || loading || creatingIngress}
-              >
-                {loading || creatingIngress ? "Starting..." : "Go Live"}
-              </button>
-            </div>
-          )}
+            )}
+
+            {/* Footer */}
+            {!isStreaming && gstreamerInfo?.available && (
+              <div className={css.Footer}>
+                <span className={css.FooterInfo}>
+                  {selectedSource ? `${settings.width}x${settings.height} ${settings.fps}fps` : "Select a source"}
+                </span>
+                <button
+                  className={css.GoLiveBtn}
+                  onClick={handleStartStream}
+                  disabled={!isConnected || !selectedSource || loading || creatingIngress}
+                >
+                  {loading || creatingIngress ? "Starting..." : "Go Live"}
+                </button>
+              </div>
+            )}
           </div>
         </FocusTrap>
       </div>
