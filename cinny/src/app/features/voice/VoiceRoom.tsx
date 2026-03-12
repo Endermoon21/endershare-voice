@@ -888,7 +888,7 @@ export function VoiceRoom() {
               {isCameraEnabled ? <VideoIcon /> : <VideoOffIcon />}
             </button>
             <button
-              className={css.ControlBtnDropdownArrow}
+              className={classNames(css.ControlBtnDropdownArrow, { [css.ControlBtnDropdownArrowGreen]: isCameraEnabled })}
               onClick={() => setShowCameraMenu(!showCameraMenu)}
               title="Select camera"
             >

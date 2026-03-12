@@ -909,6 +909,19 @@ export const ControlBtnDropdownArrowMuted = style({
   },
 });
 
+// Green active state for dropdown arrow when camera is on
+export const ControlBtnDropdownArrowGreen = style({
+  backgroundColor: color.Success.Container,
+  color: color.Success.Main,
+  borderLeft: `1px solid ${color.Success.ContainerLine}`,
+  boxShadow: `0 0 8px ${color.Success.Container}`,
+  ":hover": {
+    backgroundColor: color.Success.ContainerHover,
+    color: color.Success.Main,
+    boxShadow: `0 0 12px ${color.Success.Container}`,
+  },
+});
+
 // Video tile controls overlay (fullscreen, pip, popout)
 export const TileVideoControls = style({
   position: "absolute",
