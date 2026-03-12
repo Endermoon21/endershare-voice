@@ -24,6 +24,7 @@ pub struct CaptureSource {
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub hwnd: Option<u64>, // Window handle for window capture
+    pub thumbnail: Option<String>, // Base64-encoded JPEG thumbnail
 }
 
 /// Stream configuration
@@ -119,6 +120,325 @@ fn log_to_file(message: &str) {
     }
 }
 
+/// Thumbnail size (width x height)
+const THUMBNAIL_WIDTH: u32 = 192;
+const THUMBNAIL_HEIGHT: u32 = 108;
+
+/// Capture a thumbnail of a monitor and return as base64-encoded JPEG
+#[cfg(target_os = "windows")]
+fn capture_monitor_thumbnail(monitor_index: u32, monitor_rect: (i32, i32, i32, i32)) -> Option<String> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{
+        BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject,
+        GetDC, GetDIBits, ReleaseDC, SelectObject, SetStretchBltMode, StretchBlt,
+        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HALFTONE, SRCCOPY,
+    };
+
+    unsafe {
+        let (left, top, right, bottom) = monitor_rect;
+        let src_width = (right - left) as i32;
+        let src_height = (bottom - top) as i32;
+
+        if src_width <= 0 || src_height <= 0 {
+            return None;
+        }
+
+        // Get screen DC
+        let screen_dc = GetDC(HWND::default());
+        if screen_dc.is_invalid() {
+            return None;
+        }
+
+        // Create compatible DC for thumbnail
+        let mem_dc = CreateCompatibleDC(screen_dc);
+        if mem_dc.is_invalid() {
+            ReleaseDC(HWND::default(), screen_dc);
+            return None;
+        }
+
+        // Create bitmap for thumbnail
+        let thumb_bitmap = CreateCompatibleBitmap(screen_dc, THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32);
+        if thumb_bitmap.is_invalid() {
+            let _ = DeleteDC(mem_dc);
+            ReleaseDC(HWND::default(), screen_dc);
+            return None;
+        }
+
+        // Select bitmap into DC
+        let old_bitmap = SelectObject(mem_dc, thumb_bitmap);
+
+        // Set stretch mode for better quality
+        SetStretchBltMode(mem_dc, HALFTONE);
+
+        // Stretch blit from screen to thumbnail
+        let result = StretchBlt(
+            mem_dc,
+            0, 0,
+            THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32,
+            screen_dc,
+            left, top,
+            src_width, src_height,
+            SRCCOPY,
+        );
+
+        if !result.as_bool() {
+            SelectObject(mem_dc, old_bitmap);
+            let _ = DeleteObject(thumb_bitmap);
+            let _ = DeleteDC(mem_dc);
+            ReleaseDC(HWND::default(), screen_dc);
+            return None;
+        }
+
+        // Get bitmap bits
+        let mut bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: THUMBNAIL_WIDTH as i32,
+                biHeight: -(THUMBNAIL_HEIGHT as i32), // Negative for top-down
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0 as u32,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [Default::default()],
+        };
+
+        let mut pixels = vec![0u8; (THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 4) as usize];
+
+        let lines = GetDIBits(
+            mem_dc,
+            thumb_bitmap,
+            0,
+            THUMBNAIL_HEIGHT,
+            Some(pixels.as_mut_ptr() as *mut _),
+            &mut bmi,
+            DIB_RGB_COLORS,
+        );
+
+        // Cleanup GDI objects
+        SelectObject(mem_dc, old_bitmap);
+        let _ = DeleteObject(thumb_bitmap);
+        let _ = DeleteDC(mem_dc);
+        ReleaseDC(HWND::default(), screen_dc);
+
+        if lines == 0 {
+            return None;
+        }
+
+        // Convert BGRA to RGB
+        let mut rgb_pixels = Vec::with_capacity((THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 3) as usize);
+        for chunk in pixels.chunks(4) {
+            if chunk.len() >= 3 {
+                rgb_pixels.push(chunk[2]); // R
+                rgb_pixels.push(chunk[1]); // G
+                rgb_pixels.push(chunk[0]); // B
+            }
+        }
+
+        // Encode as JPEG using image crate
+        use image::{ImageBuffer, Rgb, ImageEncoder};
+        use image::codecs::jpeg::JpegEncoder;
+        use std::io::Cursor;
+
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(
+            THUMBNAIL_WIDTH,
+            THUMBNAIL_HEIGHT,
+            rgb_pixels,
+        )?;
+
+        let mut jpeg_data = Cursor::new(Vec::new());
+        let encoder = JpegEncoder::new_with_quality(&mut jpeg_data, 70);
+        encoder.write_image(
+            img.as_raw(),
+            THUMBNAIL_WIDTH,
+            THUMBNAIL_HEIGHT,
+            image::ExtendedColorType::Rgb8,
+        ).ok()?;
+
+        // Base64 encode
+        use base64::Engine;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(jpeg_data.into_inner());
+        Some(format!("data:image/jpeg;base64,{}", b64))
+    }
+}
+
+/// Capture a thumbnail of a window and return as base64-encoded JPEG
+#[cfg(target_os = "windows")]
+fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
+    use windows::Win32::Foundation::{HWND, RECT};
+    use windows::Win32::Graphics::Gdi::{
+        BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject,
+        GetDC, GetDIBits, ReleaseDC, SelectObject, SetStretchBltMode, StretchBlt,
+        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HALFTONE, SRCCOPY,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, PrintWindow, PW_RENDERFULLCONTENT};
+
+    unsafe {
+        let hwnd = HWND(hwnd_value as *mut _);
+
+        // Get window rect
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect).is_err() {
+            return None;
+        }
+
+        let src_width = rect.right - rect.left;
+        let src_height = rect.bottom - rect.top;
+
+        if src_width <= 0 || src_height <= 0 {
+            return None;
+        }
+
+        // Get window DC
+        let window_dc = GetDC(hwnd);
+        if window_dc.is_invalid() {
+            return None;
+        }
+
+        // Create compatible DC for full window capture
+        let src_dc = CreateCompatibleDC(window_dc);
+        if src_dc.is_invalid() {
+            ReleaseDC(hwnd, window_dc);
+            return None;
+        }
+
+        // Create bitmap for full window
+        let src_bitmap = CreateCompatibleBitmap(window_dc, src_width, src_height);
+        if src_bitmap.is_invalid() {
+            let _ = DeleteDC(src_dc);
+            ReleaseDC(hwnd, window_dc);
+            return None;
+        }
+
+        let old_src_bitmap = SelectObject(src_dc, src_bitmap);
+
+        // Use PrintWindow to capture window content
+        let print_result = PrintWindow(hwnd, src_dc, PW_RENDERFULLCONTENT);
+
+        if !print_result.as_bool() {
+            // Fallback: try BitBlt from window DC
+            let _ = BitBlt(src_dc, 0, 0, src_width, src_height, window_dc, 0, 0, SRCCOPY);
+        }
+
+        // Now create thumbnail DC
+        let thumb_dc = CreateCompatibleDC(window_dc);
+        if thumb_dc.is_invalid() {
+            SelectObject(src_dc, old_src_bitmap);
+            let _ = DeleteObject(src_bitmap);
+            let _ = DeleteDC(src_dc);
+            ReleaseDC(hwnd, window_dc);
+            return None;
+        }
+
+        let thumb_bitmap = CreateCompatibleBitmap(window_dc, THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32);
+        if thumb_bitmap.is_invalid() {
+            let _ = DeleteDC(thumb_dc);
+            SelectObject(src_dc, old_src_bitmap);
+            let _ = DeleteObject(src_bitmap);
+            let _ = DeleteDC(src_dc);
+            ReleaseDC(hwnd, window_dc);
+            return None;
+        }
+
+        let old_thumb_bitmap = SelectObject(thumb_dc, thumb_bitmap);
+
+        // Set stretch mode for better quality
+        SetStretchBltMode(thumb_dc, HALFTONE);
+
+        // Stretch from full capture to thumbnail
+        StretchBlt(
+            thumb_dc,
+            0, 0,
+            THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32,
+            src_dc,
+            0, 0,
+            src_width, src_height,
+            SRCCOPY,
+        );
+
+        // Get thumbnail bits
+        let mut bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: THUMBNAIL_WIDTH as i32,
+                biHeight: -(THUMBNAIL_HEIGHT as i32),
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0 as u32,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [Default::default()],
+        };
+
+        let mut pixels = vec![0u8; (THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 4) as usize];
+
+        let lines = GetDIBits(
+            thumb_dc,
+            thumb_bitmap,
+            0,
+            THUMBNAIL_HEIGHT,
+            Some(pixels.as_mut_ptr() as *mut _),
+            &mut bmi,
+            DIB_RGB_COLORS,
+        );
+
+        // Cleanup
+        SelectObject(thumb_dc, old_thumb_bitmap);
+        let _ = DeleteObject(thumb_bitmap);
+        let _ = DeleteDC(thumb_dc);
+        SelectObject(src_dc, old_src_bitmap);
+        let _ = DeleteObject(src_bitmap);
+        let _ = DeleteDC(src_dc);
+        ReleaseDC(hwnd, window_dc);
+
+        if lines == 0 {
+            return None;
+        }
+
+        // Convert BGRA to RGB
+        let mut rgb_pixels = Vec::with_capacity((THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 3) as usize);
+        for chunk in pixels.chunks(4) {
+            if chunk.len() >= 3 {
+                rgb_pixels.push(chunk[2]); // R
+                rgb_pixels.push(chunk[1]); // G
+                rgb_pixels.push(chunk[0]); // B
+            }
+        }
+
+        // Encode as JPEG
+        use image::{ImageBuffer, Rgb, ImageEncoder};
+        use image::codecs::jpeg::JpegEncoder;
+        use std::io::Cursor;
+
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(
+            THUMBNAIL_WIDTH,
+            THUMBNAIL_HEIGHT,
+            rgb_pixels,
+        )?;
+
+        let mut jpeg_data = Cursor::new(Vec::new());
+        let encoder = JpegEncoder::new_with_quality(&mut jpeg_data, 70);
+        encoder.write_image(
+            img.as_raw(),
+            THUMBNAIL_WIDTH,
+            THUMBNAIL_HEIGHT,
+            image::ExtendedColorType::Rgb8,
+        ).ok()?;
+
+        use base64::Engine;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(jpeg_data.into_inner());
+        Some(format!("data:image/jpeg;base64,{}", b64))
+    }
+}
+
 /// List available capture sources (screens and windows)
 #[tauri::command]
 pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
@@ -146,6 +466,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    thumbnail: None,
                 }])
             },
             Ok(Err(e)) => {
@@ -157,6 +478,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    thumbnail: None,
                 }])
             },
             Err(panic_info) => {
@@ -168,6 +490,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    thumbnail: None,
                 }])
             }
         }
@@ -181,6 +504,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
             width: None,
             height: None,
             hwnd: None,
+            thumbnail: None,
         }])
     }
 }
@@ -198,10 +522,18 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
 
     let mut sources = Vec::new();
 
-    // Enumerate monitors
+    // Enumerate monitors - collect info first, then capture thumbnails
     unsafe {
+        struct MonitorInfo {
+            index: u32,
+            name: String,
+            width: u32,
+            height: u32,
+            rect: (i32, i32, i32, i32),
+        }
+
         struct MonitorData {
-            sources: Vec<CaptureSource>,
+            monitors: Vec<MonitorInfo>,
             index: u32,
         }
 
@@ -217,24 +549,27 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
 
             if GetMonitorInfoW(hmonitor, &mut info.monitorInfo).as_bool() {
-                let width = (info.monitorInfo.rcMonitor.right - info.monitorInfo.rcMonitor.left) as u32;
-                let height = (info.monitorInfo.rcMonitor.bottom - info.monitorInfo.rcMonitor.top) as u32;
+                let left = info.monitorInfo.rcMonitor.left;
+                let top = info.monitorInfo.rcMonitor.top;
+                let right = info.monitorInfo.rcMonitor.right;
+                let bottom = info.monitorInfo.rcMonitor.bottom;
+                let width = (right - left) as u32;
+                let height = (bottom - top) as u32;
 
                 // Check if primary monitor
-                let is_primary = (info.monitorInfo.dwFlags & 1) != 0; // MONITORINFOF_PRIMARY = 1
+                let is_primary = (info.monitorInfo.dwFlags & 1) != 0;
                 let name = if is_primary {
                     format!("Display {} (Primary)", data.index + 1)
                 } else {
                     format!("Display {}", data.index + 1)
                 };
 
-                data.sources.push(CaptureSource {
-                    id: format!("monitor:{}", data.index),
+                data.monitors.push(MonitorInfo {
+                    index: data.index,
                     name,
-                    source_type: "screen".to_string(),
-                    width: Some(width),
-                    height: Some(height),
-                    hwnd: None,
+                    width,
+                    height,
+                    rect: (left, top, right, bottom),
                 });
 
                 data.index += 1;
@@ -244,7 +579,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
         }
 
         let mut monitor_data = MonitorData {
-            sources: Vec::new(),
+            monitors: Vec::new(),
             index: 0,
         };
 
@@ -255,8 +590,19 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             LPARAM(&mut monitor_data as *mut MonitorData as isize),
         );
 
-        // Add monitors to main sources list
-        sources.extend(monitor_data.sources);
+        // Now capture thumbnails for each monitor
+        for mon in monitor_data.monitors {
+            let thumbnail = capture_monitor_thumbnail(mon.index, mon.rect);
+            sources.push(CaptureSource {
+                id: format!("monitor:{}", mon.index),
+                name: mon.name,
+                source_type: "screen".to_string(),
+                width: Some(mon.width),
+                height: Some(mon.height),
+                hwnd: None,
+                thumbnail,
+            });
+        }
     }
 
     // Fallback if no monitors found
@@ -268,6 +614,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             width: None,
             height: None,
             hwnd: None,
+            thumbnail: None,
         });
     }
 
@@ -379,10 +726,11 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
         window_info = callback_data.windows;
     }
 
-    // Now add windows to sources and log each one
+    // Now add windows to sources and capture thumbnails
     log_to_file(&format!("Adding {} windows to sources", window_info.len()));
     for (hwnd_value, title, width, height) in window_info {
         log_to_file(&format!("Adding window: '{}' ({}x{}) hwnd={}", title, width, height, hwnd_value));
+        let thumbnail = capture_window_thumbnail(hwnd_value);
         sources.push(CaptureSource {
             id: format!("hwnd:{}", hwnd_value),
             name: if title.len() > 45 { format!("{}...", &title[..42]) } else { title },
@@ -390,6 +738,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             width: Some(width),
             height: Some(height),
             hwnd: Some(hwnd_value),
+            thumbnail,
         });
     }
 

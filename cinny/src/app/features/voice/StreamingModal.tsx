@@ -445,9 +445,17 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
                       className={`${css.SourceItem} ${selectedSource?.id === source.id ? css.SourceItemSelected : ""}`}
                       onClick={() => setSelectedSource(source)}
                     >
-                      <div className={css.SourceIcon}>
-                        {source.source_type === "screen" ? <MonitorIcon /> : <WindowIcon />}
-                      </div>
+                      {source.thumbnail ? (
+                        <img
+                          src={source.thumbnail}
+                          alt={source.name}
+                          className={css.SourceThumbnail}
+                        />
+                      ) : (
+                        <div className={css.SourceThumbnailPlaceholder}>
+                          {source.source_type === "screen" ? <MonitorIcon /> : <WindowIcon />}
+                        </div>
+                      )}
                       <div className={css.SourceInfo}>
                         <span className={css.SourceName}>{source.name}</span>
                         {source.width && source.height && (

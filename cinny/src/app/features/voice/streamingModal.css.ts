@@ -243,16 +243,16 @@ export const RefreshBtn = style({
 export const SourceList = style({
   display: "flex",
   flexDirection: "column",
-  gap: "4px",
-  maxHeight: "180px",
+  gap: "6px",
+  maxHeight: "260px",
   overflowY: "auto",
 });
 
 export const SourceItem = style({
   display: "flex",
   alignItems: "center",
-  gap: "10px",
-  padding: "10px 12px",
+  gap: "12px",
+  padding: "8px 10px",
   backgroundColor: "transparent",
   border: `1px solid transparent`,
   borderRadius: "8px",
@@ -280,6 +280,30 @@ export const SourceIcon = style({
   borderRadius: "6px",
   color: butter.textMuted,
   flexShrink: 0,
+});
+
+// Thumbnail preview for source
+export const SourceThumbnail = style({
+  width: "96px",
+  height: "54px",
+  objectFit: "cover",
+  borderRadius: "6px",
+  flexShrink: 0,
+  backgroundColor: butter.background,
+  border: `1px solid ${butter.border}`,
+});
+
+export const SourceThumbnailPlaceholder = style({
+  width: "96px",
+  height: "54px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: butter.background,
+  borderRadius: "6px",
+  color: butter.textMuted,
+  flexShrink: 0,
+  border: `1px solid ${butter.border}`,
 });
 
 export const SourceInfo = style({
