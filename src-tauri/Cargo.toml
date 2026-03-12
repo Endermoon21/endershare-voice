@@ -35,7 +35,7 @@ urlencoding = "2.1"
 base64 = "0.22"
 
 # Image processing for thumbnails
-image = { version = "0.25", default-features = false, features = ["jpeg"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 
 tauri-plugin-localhost = "0.1.0"
 tauri-plugin-window-state = "0.1.1"
@@ -48,6 +48,9 @@ windows = { version = "0.58", features = [
     "Win32_Graphics_Dwm",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+# Reliable window screenshot capture
+win-screenshot = "5"
 
 [features]
 default = ["custom-protocol"]

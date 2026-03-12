@@ -267,167 +267,61 @@ fn capture_monitor_thumbnail(monitor_index: u32, monitor_rect: (i32, i32, i32, i
 }
 
 /// Capture a thumbnail of a window and return as base64-encoded JPEG
-/// Uses screen DC capture at window position (shows what's visible on screen)
+/// Uses win-screenshot crate with PrintWindow + PW_RENDERFULLCONTENT for reliable capture
 #[cfg(target_os = "windows")]
 fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
-    use windows::Win32::Foundation::{HWND, RECT};
-    use windows::Win32::Graphics::Gdi::{
-        CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject,
-        GetDC, GetDIBits, ReleaseDC, SelectObject, SetStretchBltMode, StretchBlt,
-        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HALFTONE, SRCCOPY,
-    };
-    use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
-    use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsIconic};
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::IsIconic;
+    use win_screenshot::prelude::*;
 
     unsafe {
         let hwnd = HWND(hwnd_value as *mut _);
 
-        // Skip minimized windows - they can't be captured
+        // Skip minimized windows
         if IsIconic(hwnd).as_bool() {
             return None;
         }
-
-        // Try DWM extended frame bounds first (more accurate for modern windows)
-        let mut rect = RECT::default();
-        let dwm_result = DwmGetWindowAttribute(
-            hwnd,
-            DWMWA_EXTENDED_FRAME_BOUNDS,
-            &mut rect as *mut _ as *mut _,
-            std::mem::size_of::<RECT>() as u32,
-        );
-
-        // Fall back to GetWindowRect if DWM fails
-        if dwm_result.is_err() {
-            if GetWindowRect(hwnd, &mut rect).is_err() {
-                return None;
-            }
-        }
-
-        let src_width = rect.right - rect.left;
-        let src_height = rect.bottom - rect.top;
-
-        if src_width <= 0 || src_height <= 0 {
-            return None;
-        }
-
-        // Get screen DC (NULL hwnd = entire screen)
-        let screen_dc = GetDC(HWND::default());
-        if screen_dc.is_invalid() {
-            return None;
-        }
-
-        // Create compatible DC for thumbnail
-        let thumb_dc = CreateCompatibleDC(screen_dc);
-        if thumb_dc.is_invalid() {
-            ReleaseDC(HWND::default(), screen_dc);
-            return None;
-        }
-
-        let thumb_bitmap = CreateCompatibleBitmap(screen_dc, THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32);
-        if thumb_bitmap.is_invalid() {
-            let _ = DeleteDC(thumb_dc);
-            ReleaseDC(HWND::default(), screen_dc);
-            return None;
-        }
-
-        let old_thumb_bitmap = SelectObject(thumb_dc, thumb_bitmap);
-
-        // Set stretch mode for better quality
-        SetStretchBltMode(thumb_dc, HALFTONE);
-
-        // Capture from screen at window's position
-        let result = StretchBlt(
-            thumb_dc,
-            0, 0,
-            THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32,
-            screen_dc,
-            rect.left, rect.top,
-            src_width, src_height,
-            SRCCOPY,
-        );
-
-        if !result.as_bool() {
-            SelectObject(thumb_dc, old_thumb_bitmap);
-            let _ = DeleteObject(thumb_bitmap);
-            let _ = DeleteDC(thumb_dc);
-            ReleaseDC(HWND::default(), screen_dc);
-            return None;
-        }
-
-        // Get thumbnail bits
-        let mut bmi = BITMAPINFO {
-            bmiHeader: BITMAPINFOHEADER {
-                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-                biWidth: THUMBNAIL_WIDTH as i32,
-                biHeight: -(THUMBNAIL_HEIGHT as i32),
-                biPlanes: 1,
-                biBitCount: 32,
-                biCompression: BI_RGB.0 as u32,
-                biSizeImage: 0,
-                biXPelsPerMeter: 0,
-                biYPelsPerMeter: 0,
-                biClrUsed: 0,
-                biClrImportant: 0,
-            },
-            bmiColors: [Default::default()],
-        };
-
-        let mut pixels = vec![0u8; (THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 4) as usize];
-
-        let lines = GetDIBits(
-            thumb_dc,
-            thumb_bitmap,
-            0,
-            THUMBNAIL_HEIGHT,
-            Some(pixels.as_mut_ptr() as *mut _),
-            &mut bmi,
-            DIB_RGB_COLORS,
-        );
-
-        // Cleanup
-        SelectObject(thumb_dc, old_thumb_bitmap);
-        let _ = DeleteObject(thumb_bitmap);
-        let _ = DeleteDC(thumb_dc);
-        ReleaseDC(HWND::default(), screen_dc);
-
-        if lines == 0 {
-            return None;
-        }
-
-        // Convert BGRA to RGB
-        let mut rgb_pixels = Vec::with_capacity((THUMBNAIL_WIDTH * THUMBNAIL_HEIGHT * 3) as usize);
-        for chunk in pixels.chunks(4) {
-            if chunk.len() >= 3 {
-                rgb_pixels.push(chunk[2]); // R
-                rgb_pixels.push(chunk[1]); // G
-                rgb_pixels.push(chunk[0]); // B
-            }
-        }
-
-        // Encode as JPEG
-        use image::{ImageBuffer, Rgb, ImageEncoder};
-        use image::codecs::jpeg::JpegEncoder;
-        use std::io::Cursor;
-
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_raw(
-            THUMBNAIL_WIDTH,
-            THUMBNAIL_HEIGHT,
-            rgb_pixels,
-        )?;
-
-        let mut jpeg_data = Cursor::new(Vec::new());
-        let encoder = JpegEncoder::new_with_quality(&mut jpeg_data, 70);
-        encoder.write_image(
-            img.as_raw(),
-            THUMBNAIL_WIDTH,
-            THUMBNAIL_HEIGHT,
-            image::ExtendedColorType::Rgb8,
-        ).ok()?;
-
-        use base64::Engine;
-        let b64 = base64::engine::general_purpose::STANDARD.encode(jpeg_data.into_inner());
-        Some(format!("data:image/jpeg;base64,{}", b64))
     }
+
+    // Use win-screenshot to capture the window (handles PrintWindow properly)
+    let buf = match capture_window(hwnd_value as isize) {
+        Ok(buf) => buf,
+        Err(_) => return None,
+    };
+
+    // Resize to thumbnail
+    use image::{ImageBuffer, Rgb, ImageEncoder, imageops::FilterType};
+    use image::codecs::jpeg::JpegEncoder;
+    use std::io::Cursor;
+
+    // Convert RgbBuf to image
+    let img: ImageBuffer<Rgb<u8>, Vec<u8>> = match ImageBuffer::from_raw(
+        buf.width as u32,
+        buf.height as u32,
+        buf.pixels.iter().flat_map(|p| [p.r, p.g, p.b]).collect(),
+    ) {
+        Some(img) => img,
+        None => return None,
+    };
+
+    // Resize to thumbnail size
+    let thumb = image::imageops::resize(&img, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, FilterType::Triangle);
+
+    // Encode as JPEG
+    let mut jpeg_data = Cursor::new(Vec::new());
+    let encoder = JpegEncoder::new_with_quality(&mut jpeg_data, 70);
+    if encoder.write_image(
+        thumb.as_raw(),
+        THUMBNAIL_WIDTH,
+        THUMBNAIL_HEIGHT,
+        image::ExtendedColorType::Rgb8,
+    ).is_err() {
+        return None;
+    }
+
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(jpeg_data.into_inner());
+    Some(format!("data:image/jpeg;base64,{}", b64))
 }
 
 /// List available capture sources (screens and windows)
