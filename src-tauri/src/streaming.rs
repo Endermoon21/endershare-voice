@@ -272,8 +272,8 @@ fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
     use windows::Win32::Foundation::{HWND, RECT};
     use windows::Win32::Graphics::Gdi::{
         BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject,
-        GetDC, GetDIBits, PrintWindow, ReleaseDC, SelectObject, SetStretchBltMode, StretchBlt,
-        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HALFTONE, PW_RENDERFULLCONTENT, SRCCOPY,
+        GetDC, GetDIBits, ReleaseDC, SelectObject, SetStretchBltMode, StretchBlt,
+        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HALFTONE, SRCCOPY,
     };
     use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
 
@@ -293,43 +293,15 @@ fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
             return None;
         }
 
-        // Get window DC
+        // Get window DC (captures the window content directly)
         let window_dc = GetDC(hwnd);
         if window_dc.is_invalid() {
             return None;
         }
 
-        // Create compatible DC for full window capture
-        let src_dc = CreateCompatibleDC(window_dc);
-        if src_dc.is_invalid() {
-            ReleaseDC(hwnd, window_dc);
-            return None;
-        }
-
-        // Create bitmap for full window
-        let src_bitmap = CreateCompatibleBitmap(window_dc, src_width, src_height);
-        if src_bitmap.is_invalid() {
-            let _ = DeleteDC(src_dc);
-            ReleaseDC(hwnd, window_dc);
-            return None;
-        }
-
-        let old_src_bitmap = SelectObject(src_dc, src_bitmap);
-
-        // Use PrintWindow to capture window content
-        let print_result = PrintWindow(hwnd, src_dc, PW_RENDERFULLCONTENT);
-
-        if !print_result.as_bool() {
-            // Fallback: try BitBlt from window DC
-            let _ = BitBlt(src_dc, 0, 0, src_width, src_height, window_dc, 0, 0, SRCCOPY);
-        }
-
-        // Now create thumbnail DC
+        // Create compatible DC for thumbnail
         let thumb_dc = CreateCompatibleDC(window_dc);
         if thumb_dc.is_invalid() {
-            SelectObject(src_dc, old_src_bitmap);
-            let _ = DeleteObject(src_bitmap);
-            let _ = DeleteDC(src_dc);
             ReleaseDC(hwnd, window_dc);
             return None;
         }
@@ -337,9 +309,6 @@ fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
         let thumb_bitmap = CreateCompatibleBitmap(window_dc, THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32);
         if thumb_bitmap.is_invalid() {
             let _ = DeleteDC(thumb_dc);
-            SelectObject(src_dc, old_src_bitmap);
-            let _ = DeleteObject(src_bitmap);
-            let _ = DeleteDC(src_dc);
             ReleaseDC(hwnd, window_dc);
             return None;
         }
@@ -349,16 +318,24 @@ fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
         // Set stretch mode for better quality
         SetStretchBltMode(thumb_dc, HALFTONE);
 
-        // Stretch from full capture to thumbnail
-        StretchBlt(
+        // Stretch blit directly from window DC to thumbnail
+        let result = StretchBlt(
             thumb_dc,
             0, 0,
             THUMBNAIL_WIDTH as i32, THUMBNAIL_HEIGHT as i32,
-            src_dc,
+            window_dc,
             0, 0,
             src_width, src_height,
             SRCCOPY,
         );
+
+        if !result.as_bool() {
+            SelectObject(thumb_dc, old_thumb_bitmap);
+            let _ = DeleteObject(thumb_bitmap);
+            let _ = DeleteDC(thumb_dc);
+            ReleaseDC(hwnd, window_dc);
+            return None;
+        }
 
         // Get thumbnail bits
         let mut bmi = BITMAPINFO {
@@ -394,9 +371,6 @@ fn capture_window_thumbnail(hwnd_value: u64) -> Option<String> {
         SelectObject(thumb_dc, old_thumb_bitmap);
         let _ = DeleteObject(thumb_bitmap);
         let _ = DeleteDC(thumb_dc);
-        SelectObject(src_dc, old_src_bitmap);
-        let _ = DeleteObject(src_bitmap);
-        let _ = DeleteDC(src_dc);
         ReleaseDC(hwnd, window_dc);
 
         if lines == 0 {
