@@ -11,6 +11,28 @@ import rnnoiseWasmPath from "@sapphi-red/web-noise-suppressor/rnnoise.wasm?url";
 // @ts-ignore
 import rnnoiseSimdWasmPath from "@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url";
 
+// LocalStorage key for noise filter preference
+const NOISE_FILTER_PREF_KEY = "cinny_noise_filter_enabled";
+
+// Load saved preference (default to true if not set)
+function getSavedNoiseFilterPref(): boolean {
+  try {
+    const saved = localStorage.getItem(NOISE_FILTER_PREF_KEY);
+    return saved === null ? true : saved === "true";
+  } catch {
+    return true;
+  }
+}
+
+// Save preference
+function saveNoiseFilterPref(enabled: boolean): void {
+  try {
+    localStorage.setItem(NOISE_FILTER_PREF_KEY, String(enabled));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export interface UseNoiseFilterReturn {
   setNoiseFilterEnabled: (enabled: boolean) => Promise<void>;
   isNoiseFilterEnabled: boolean;
@@ -142,6 +164,7 @@ export function useNoiseFilter(microphoneTrack?: LocalAudioTrack): UseNoiseFilte
 
         console.log("[NoiseFilter] Noise filter enabled");
         setIsNoiseFilterEnabled(true);
+        saveNoiseFilterPref(true);
       } else {
         // Restore original track
         const graph = audioGraphRef.current;
@@ -152,6 +175,7 @@ export function useNoiseFilter(microphoneTrack?: LocalAudioTrack): UseNoiseFilte
 
         console.log("[NoiseFilter] Noise filter disabled");
         setIsNoiseFilterEnabled(false);
+        saveNoiseFilterPref(false);
       }
     } catch (err) {
       console.error("[NoiseFilter] Error toggling filter:", err);
@@ -162,12 +186,15 @@ export function useNoiseFilter(microphoneTrack?: LocalAudioTrack): UseNoiseFilte
     }
   }, [microphoneTrack, isSupported, createAudioGraph, destroyAudioGraph]);
 
-  // Auto-enable noise suppression when a track becomes available (on by default)
+  // Auto-enable noise suppression when a track becomes available (based on saved preference)
   useEffect(() => {
     if (microphoneTrack && isSupported && !hasAutoEnabled && !isNoiseFilterEnabled && !isNoiseFilterPending) {
-      console.log("[NoiseFilter] Auto-enabling noise suppression...");
+      const savedPref = getSavedNoiseFilterPref();
+      console.log("[NoiseFilter] Auto-applying saved preference:", savedPref);
       setHasAutoEnabled(true);
-      setNoiseFilterEnabled(true);
+      if (savedPref) {
+        setNoiseFilterEnabled(true);
+      }
     }
   }, [microphoneTrack, isSupported, hasAutoEnabled, isNoiseFilterEnabled, isNoiseFilterPending, setNoiseFilterEnabled]);
 
