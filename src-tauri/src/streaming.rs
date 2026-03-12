@@ -98,14 +98,19 @@ impl Drop for StreamingState {
     }
 }
 
-/// Log to debug file (Windows) or system log (other platforms)
+/// Log to debug file in user's temp directory
 fn log_to_file(message: &str) {
     #[cfg(target_os = "windows")]
     {
+        // Use TEMP directory which exists for all users
+        let log_path = std::env::var("TEMP")
+            .unwrap_or_else(|_| "C:\\Windows\\Temp".to_string());
+        let log_file = format!("{}\\cinny_streaming.log", log_path);
+
         if let Ok(mut file) = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("C:\\Users\\VOLTA\\streaming_debug.log")
+            .open(&log_file)
         {
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)

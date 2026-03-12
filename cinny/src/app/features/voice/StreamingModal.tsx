@@ -19,7 +19,34 @@ import {
   NativeStreamStatus,
   NativeStreamConfig,
 } from "./nativeStreaming";
-import { createWhipIngress, deleteWhipIngress, WhipIngressInfo } from "./SunshineController";
+import { createWhipIngress, deleteWhipIngress, WhipIngressInfo, IceServer } from "./SunshineController";
+
+/**
+ * Extract a GStreamer-compatible TURN URL from Cloudflare ICE servers
+ * Format: turn://username:credential@host:port
+ */
+function extractTurnUrl(iceServers?: IceServer[]): string | undefined {
+  if (!iceServers) return undefined;
+
+  for (const server of iceServers) {
+    if (server.urls && server.username && server.credential) {
+      // Find a TURN URL (prefer UDP for lower latency)
+      const turnUrl = server.urls.find(url => url.startsWith('turn:') && url.includes('transport=udp'))
+        || server.urls.find(url => url.startsWith('turn:'));
+
+      if (turnUrl) {
+        // Parse: turn:turn.cloudflare.com:3478?transport=udp
+        const match = turnUrl.match(/turn:([^:?]+):?(\d+)?/);
+        if (match) {
+          const host = match[1];
+          const port = match[2] || '3478';
+          return `turn://${encodeURIComponent(server.username)}:${encodeURIComponent(server.credential)}@${host}:${port}`;
+        }
+      }
+    }
+  }
+  return undefined;
+}
 import { Track } from "livekit-client";
 import * as css from "./streamingModal.css";
 
@@ -287,6 +314,11 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
       }
 
       const settings = getEffectiveSettings();
+
+      // Extract TURN server from Cloudflare ICE servers (provided by token server)
+      const turnServer = extractTurnUrl(ingress.iceServers);
+      console.log('[Streaming] Using TURN:', turnServer ? 'Cloudflare' : 'none');
+
       const config: NativeStreamConfig = {
         source_id: selectedSource.id,
         whip_url: ingress.whipUrl,
@@ -299,7 +331,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
         audio_enabled: audioEnabled,
         bearer_token: ingress.streamKey,
         backend: 'gstreamer',
-        turn_server: 'turn://livekit:turnpassword123@144.24.3.66:3478',
+        turn_server: turnServer,
       };
 
       await startNativeStream(config);

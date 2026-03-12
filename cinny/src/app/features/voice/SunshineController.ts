@@ -27,6 +27,12 @@ export interface SunshineClient {
   uniqueId: string;
 }
 
+export interface IceServer {
+  urls: string[];
+  username?: string;
+  credential?: string;
+}
+
 export interface WhipIngressInfo {
   success: boolean;
   ingressId: string;
@@ -36,6 +42,7 @@ export interface WhipIngressInfo {
   room: string;
   username: string;
   existing?: boolean;
+  iceServers?: IceServer[];
   instructions: {
     sunshine: string;
     sunshineLocal: string;
