@@ -186,15 +186,13 @@ export const MediaBtn = style({
   },
 });
 
-// Discord March 2025 style - green glow when camera/streaming active
+// Solid green when camera/streaming active
 export const MediaBtnActive = style({
-  backgroundColor: 'rgba(35, 165, 90, 0.2)',
-  color: butter.success,
-  boxShadow: '0 0 8px rgba(35, 165, 90, 0.4)',
+  backgroundColor: '#23A55A',
+  color: '#fff',
   ':hover': {
-    backgroundColor: 'rgba(35, 165, 90, 0.3)',
-    color: butter.success,
-    boxShadow: '0 0 12px rgba(35, 165, 90, 0.5)',
+    backgroundColor: '#1f9150',
+    color: '#fff',
   },
 });
 
