@@ -11,153 +11,30 @@ mod upload;
 
 use tauri::{utils::config::AppUrl, WindowUrl};
 
-/// Set the DLL search directory on Windows
-/// This is CRITICAL - setting PATH alone is NOT sufficient for Windows
-/// to find transitive DLL dependencies. We must call SetDllDirectoryW.
-#[cfg(target_os = "windows")]
-fn set_dll_directory(path: &std::path::Path) {
-    use std::os::windows::ffi::OsStrExt;
-
-    #[link(name = "kernel32")]
-    extern "system" {
-        fn SetDllDirectoryW(lpPathName: *const u16) -> i32;
-    }
-
-    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
-    let result = unsafe { SetDllDirectoryW(wide.as_ptr()) };
-    if result != 0 {
-        log::info!("SetDllDirectory succeeded for {:?}", path);
-    } else {
-        log::warn!("SetDllDirectory failed for {:?}", path);
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-fn set_dll_directory(_path: &std::path::Path) {
-    // No-op on non-Windows platforms
-}
-
-/// Set up GStreamer plugin paths for bundled installation
-fn setup_gstreamer_paths() {
-    // Try to find bundled GStreamer DLLs relative to executable
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(app_dir) = exe_path.parent() {
-            // First try structured gstreamer folder (dev setup)
-            let gst_root = app_dir.join("gstreamer");
-            let gst_plugins_structured = gst_root.join("lib").join("gstreamer-1.0");
-
-            // Also check if plugins are directly in app dir (bundled setup)
-            let gst_plugins_flat = app_dir.to_path_buf();
-
-            // Check for a known plugin to detect which layout we have
-            let has_structured = gst_plugins_structured.join("gstrswebrtc.dll").exists();
-            let has_flat = gst_plugins_flat.join("gstrswebrtc.dll").exists();
-
-            if has_structured {
-                std::env::set_var("GST_PLUGIN_PATH", &gst_plugins_structured);
-                log::info!("Set GST_PLUGIN_PATH to {:?} (structured)", gst_plugins_structured);
-
-                // CRITICAL: Set DLL directory for Windows to find transitive dependencies
-                let gst_bin = gst_root.join("bin");
-                if gst_bin.exists() {
-                    set_dll_directory(&gst_bin);
-                }
-            } else if has_flat {
-                std::env::set_var("GST_PLUGIN_PATH", &gst_plugins_flat);
-                log::info!("Set GST_PLUGIN_PATH to {:?} (flat)", gst_plugins_flat);
-
-                // CRITICAL: Set DLL directory for Windows to find transitive dependencies
-                set_dll_directory(app_dir);
-
-                // Also add to PATH as backup for DLL resolution
-                if let Ok(current_path) = std::env::var("PATH") {
-                    let new_path = format!("{};{}", app_dir.display(), current_path);
-                    std::env::set_var("PATH", &new_path);
-                    log::info!("Added app_dir to PATH");
-                }
-            } else {
-                log::warn!("Could not find GStreamer plugins in {:?} or {:?}",
-                    gst_plugins_structured, gst_plugins_flat);
-            }
-
-            // Only use app-local registry if we found bundled plugins
-            // Otherwise, let GStreamer use system defaults
-            if has_structured || has_flat {
-                let registry_path = app_dir.join("gstreamer-registry.bin");
-
-                // Delete old registry to force fresh scan on first run or after updates
-                if registry_path.exists() {
-                    // Check if this is a fresh install by looking for a marker file
-                    let marker_path = app_dir.join(".gst-registry-version");
-                    let current_version = env!("CARGO_PKG_VERSION");
-                    let needs_refresh = if marker_path.exists() {
-                        std::fs::read_to_string(&marker_path)
-                            .map(|v| v.trim() != current_version)
-                            .unwrap_or(true)
-                    } else {
-                        true
-                    };
-
-                    if needs_refresh {
-                        log::info!("Deleting old registry for fresh plugin scan");
-                        let _ = std::fs::remove_file(&registry_path);
-                        let _ = std::fs::write(&marker_path, current_version);
-                    }
-                }
-
-                std::env::set_var("GST_REGISTRY", &registry_path);
-                log::info!("Set GST_REGISTRY to {:?}", registry_path);
-
-                // Disable forking for plugin scanning - scan in-process instead
-                // This eliminates the need for gst-plugin-scanner.exe
-                std::env::set_var("GST_REGISTRY_FORK", "no");
-                log::info!("Set GST_REGISTRY_FORK=no for in-process plugin scanning");
-
-                // CRITICAL: Prevent loading system plugins to avoid version conflicts
-                // Bundled plugins are from GStreamer 1.28.1 - mixing with different
-                // system versions causes failures
-                std::env::set_var("GST_PLUGIN_SYSTEM_PATH", "");
-                log::info!("Set GST_PLUGIN_SYSTEM_PATH='' to isolate bundled plugins");
-
-                // Enable debug logging for plugin loading issues
-                // Only set if not already set by user
-                if std::env::var("GST_DEBUG").is_err() {
-                    std::env::set_var("GST_DEBUG", "registry:4,plugin:4");
-                }
-            }
-        }
-    }
-}
-
 fn main() {
     // Initialize logger for debug output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .init();
 
-    // Set up GStreamer paths before initialization
-    setup_gstreamer_paths();
-
-    // Initialize GStreamer
+    // Initialize GStreamer (uses system installation set up by NSIS installer)
+    // GStreamer installer sets GSTREAMER_1_0_ROOT_MSVC_X86_64 and adds bin to PATH
     if let Err(e) = gstreamer::init() {
         log::error!("Failed to initialize GStreamer: {}. Streaming will not be available.", e);
+        log::error!("Please ensure GStreamer is installed. The installer should have set it up automatically.");
     } else {
         log::info!("GStreamer initialized successfully");
 
-        // Force scan plugin directory to ensure all plugins are loaded
-        #[cfg(target_os = "windows")]
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(app_dir) = exe_path.parent() {
-                let registry = gstreamer::Registry::get();
-                let scan_result = registry.scan_path(app_dir);
-                log::info!("Manual plugin scan of {:?}: scanned {} plugins", app_dir, scan_result);
+        // Log loaded plugins for debugging
+        let registry = gstreamer::Registry::get();
+        let plugins: Vec<String> = registry.plugins().iter()
+            .map(|p| p.plugin_name().to_string())
+            .collect();
+        log::info!("GStreamer plugins loaded: {} total", plugins.len());
 
-                // Log all loaded plugins for debugging
-                let plugins: Vec<String> = registry.plugins().iter()
-                    .map(|p| p.plugin_name().to_string())
-                    .collect();
-                log::info!("Total plugins loaded: {} - {:?}", plugins.len(), plugins);
-            }
-        }
+        // Check for critical plugins
+        let has_rswebrtc = gstreamer::ElementFactory::find("whipclientsink").is_some();
+        let has_d3d11 = gstreamer::ElementFactory::find("d3d11screencapturesrc").is_some();
+        log::info!("Critical plugins - whipclientsink: {}, d3d11screencapturesrc: {}", has_rswebrtc, has_d3d11);
     }
 
     let port = 44548;
