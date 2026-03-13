@@ -498,47 +498,6 @@ Section WebView2
   webview2_done:
 SectionEnd
 
-Section GStreamer
-  ; Check if GStreamer MSVC x86_64 is already installed
-  ReadRegStr $4 HKLM "SOFTWARE\GStreamer1.0\x86_64" "InstallDir"
-  StrCmp $4 "" 0 gstreamer_done
-
-  ; Also check in WOW6432Node for 32-bit registry view
-  ReadRegStr $4 HKLM "SOFTWARE\WOW6432Node\GStreamer1.0\x86_64" "InstallDir"
-  StrCmp $4 "" 0 gstreamer_done
-
-  ; GStreamer not found - download and install
-  DetailPrint "Downloading GStreamer runtime (this may take a few minutes)..."
-  Delete "$TEMP\gstreamer-installer.exe"
-
-  ; Download GStreamer 1.28.1 MSVC x86_64 runtime from our mirror
-  ; (gstreamer.freedesktop.org has bot protection that blocks NSISdl)
-  NSISdl::download "http://144.24.3.66:8080/gstreamer/gstreamer-1.0-msvc-x86_64-1.28.1.exe" "$TEMP\gstreamer-installer.exe"
-  Pop $0
-  ${If} $0 == "success"
-    DetailPrint "GStreamer download completed successfully"
-  ${Else}
-    DetailPrint "Warning: GStreamer download failed ($0). Streaming features may not work."
-    ; Don't abort - app can still work without GStreamer, just no streaming
-    Goto gstreamer_done
-  ${EndIf}
-
-  ; Install GStreamer silently
-  ; Try /S first (NSIS-style silent)
-  DetailPrint "Installing GStreamer runtime..."
-  ExecWait '"$TEMP\gstreamer-installer.exe" /S' $1
-  ${If} $1 == 0
-    DetailPrint "GStreamer installed successfully"
-  ${Else}
-    DetailPrint "Warning: GStreamer installation returned code $1. Streaming features may not work."
-  ${EndIf}
-
-  ; Clean up
-  Delete "$TEMP\gstreamer-installer.exe"
-
-  gstreamer_done:
-SectionEnd
-
 !macro CheckIfAppIsRunning
   !if "${INSTALLMODE}" == "currentUser"
     nsis_tauri_utils::FindProcessCurrentUser "${MAINBINARYNAME}.exe"
@@ -598,6 +557,9 @@ Section Install
   {{#each binaries}}
     File /a "/oname={{this}}" "{{unescape-dollar-sign @key}}"
   {{/each}}
+
+  ; Copy GStreamer DLLs from resources to install root (DLLs must be next to exe)
+  CopyFiles /SILENT "$INSTDIR\resources\*.dll" "$INSTDIR\"
 
   ; Create uninstaller
   WriteUninstaller "$INSTDIR\uninstall.exe"

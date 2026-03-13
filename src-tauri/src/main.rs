@@ -11,43 +11,52 @@ mod upload;
 
 use tauri::{utils::config::AppUrl, WindowUrl};
 
-/// Add GStreamer bin directory to PATH if not already present
-/// This is needed because the GStreamer installer sets PATH but requires
-/// a restart/relogin for the change to take effect
+/// Set up bundled GStreamer DLLs for loading
+/// DLLs are copied to the app directory by the NSIS installer
 #[cfg(target_os = "windows")]
-fn setup_gstreamer_path() {
-    // Standard GStreamer installation paths
-    let gst_paths = [
-        "C:\\Program Files\\gstreamer\\1.0\\msvc_x86_64\\bin",
-        "C:\\gstreamer\\1.0\\msvc_x86_64\\bin",
-    ];
+fn setup_bundled_gstreamer() {
+    use std::os::windows::ffi::OsStrExt;
 
-    // Check if GStreamer is already in PATH
-    if let Ok(path) = std::env::var("PATH") {
-        if path.to_lowercase().contains("gstreamer") {
-            log::info!("GStreamer already in PATH");
-            return;
-        }
-    }
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(app_dir) = exe_path.parent() {
+            // Check if bundled DLLs exist
+            if app_dir.join("gstreamer-1.0-0.dll").exists() {
+                // Set DLL search directory for transitive dependencies
+                #[link(name = "kernel32")]
+                extern "system" {
+                    fn SetDllDirectoryW(lpPathName: *const u16) -> i32;
+                }
 
-    // Find and add GStreamer to PATH
-    for gst_path in &gst_paths {
-        let path = std::path::Path::new(gst_path);
-        if path.exists() && path.join("gstreamer-1.0-0.dll").exists() {
-            if let Ok(current_path) = std::env::var("PATH") {
-                let new_path = format!("{};{}", gst_path, current_path);
-                std::env::set_var("PATH", &new_path);
-                log::info!("Added GStreamer to PATH: {}", gst_path);
+                let wide: Vec<u16> = app_dir.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+                let result = unsafe { SetDllDirectoryW(wide.as_ptr()) };
+                if result != 0 {
+                    log::info!("SetDllDirectory succeeded for {:?}", app_dir);
+                } else {
+                    log::warn!("SetDllDirectory failed for {:?}", app_dir);
+                }
+
+                // Set plugin path to app directory
+                std::env::set_var("GST_PLUGIN_PATH", app_dir);
+                log::info!("Set GST_PLUGIN_PATH to {:?}", app_dir);
+
+                // Use app-local registry
+                let registry_path = app_dir.join("gstreamer-registry.bin");
+                std::env::set_var("GST_REGISTRY", &registry_path);
+
+                // Disable forking for plugin scanning
+                std::env::set_var("GST_REGISTRY_FORK", "no");
+
+                // Isolate from system plugins
+                std::env::set_var("GST_PLUGIN_SYSTEM_PATH", "");
+            } else {
+                log::warn!("Bundled GStreamer DLLs not found in {:?}", app_dir);
             }
-            return;
         }
     }
-
-    log::warn!("GStreamer installation not found in standard locations");
 }
 
 #[cfg(not(target_os = "windows"))]
-fn setup_gstreamer_path() {
+fn setup_bundled_gstreamer() {
     // No-op on non-Windows platforms
 }
 
@@ -56,13 +65,12 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .init();
 
-    // Add GStreamer to PATH before initialization
-    setup_gstreamer_path();
+    // Set up bundled GStreamer before initialization
+    setup_bundled_gstreamer();
 
-    // Initialize GStreamer (uses system installation set up by NSIS installer)
+    // Initialize GStreamer
     if let Err(e) = gstreamer::init() {
         log::error!("Failed to initialize GStreamer: {}. Streaming will not be available.", e);
-        log::error!("Please ensure GStreamer is installed. The installer should have set it up automatically.");
     } else {
         log::info!("GStreamer initialized successfully");
 
