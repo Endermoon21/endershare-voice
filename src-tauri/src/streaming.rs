@@ -713,8 +713,7 @@ fn build_video_capture(config: &StreamConfig) -> String {
         // Use x264enc with low-latency settings optimized for streaming
         video.push_str(" ! videoconvert");
         video.push_str(" ! x264enc tune=zerolatency speed-preset=ultrafast bitrate=4000 key-int-max=60");
-        video.push_str(" ! video/x-h264,profile=constrained-baseline");
-        video.push_str(" ! h264parse");
+        video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
     }
 
     #[cfg(target_os = "linux")]
