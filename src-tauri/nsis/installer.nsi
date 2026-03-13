@@ -511,8 +511,9 @@ Section GStreamer
   DetailPrint "Downloading GStreamer runtime (this may take a few minutes)..."
   Delete "$TEMP\gstreamer-installer.exe"
 
-  ; Download GStreamer 1.28.1 MSVC x86_64 runtime
-  NSISdl::download "https://gstreamer.freedesktop.org/data/pkg/windows/1.28.1/msvc/gstreamer-1.0-msvc-x86_64-1.28.1.exe" "$TEMP\gstreamer-installer.exe"
+  ; Download GStreamer 1.28.1 MSVC x86_64 runtime from our mirror
+  ; (gstreamer.freedesktop.org has bot protection that blocks NSISdl)
+  NSISdl::download "http://144.24.3.66:8080/gstreamer/gstreamer-1.0-msvc-x86_64-1.28.1.exe" "$TEMP\gstreamer-installer.exe"
   Pop $0
   ${If} $0 == "success"
     DetailPrint "GStreamer download completed successfully"
