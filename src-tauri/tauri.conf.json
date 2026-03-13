@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny-Min",
-    "version": "4.12.69"
+    "version": "4.12.70"
   },
   "build": {
     "withGlobalTauri": true,
@@ -36,6 +36,13 @@
         "gstgl-1.0-0.dll",
         "gstnet-1.0-0.dll",
         "gstwebrtcnice-1.0-0.dll",
+        "gstcodecs-1.0-0.dll",
+        "gstdxva-1.0-0.dll",
+        "gstapp-1.0-0.dll",
+        "gstcontroller-1.0-0.dll",
+        "gsttag-1.0-0.dll",
+        "gthread-2.0-0.dll",
+        "graphene-1.0-0.dll",
         "glib-2.0-0.dll",
         "gobject-2.0-0.dll",
         "gmodule-2.0-0.dll",

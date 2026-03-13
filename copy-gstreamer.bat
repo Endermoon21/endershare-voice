@@ -21,6 +21,15 @@ copy "%GST_ROOT%\bin\gstgl-1.0-0.dll" "%TARGET%\"
 copy "%GST_ROOT%\bin\gstnet-1.0-0.dll" "%TARGET%\"
 copy "%GST_ROOT%\bin\gstwebrtcnice-1.0-0.dll" "%TARGET%\"
 
+REM Additional libraries needed for d3d11 and video codecs
+copy "%GST_ROOT%\bin\gstcodecs-1.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\gstdxva-1.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\gstapp-1.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\gstcontroller-1.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\gsttag-1.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\gthread-2.0-0.dll" "%TARGET%\"
+copy "%GST_ROOT%\bin\graphene-1.0-0.dll" "%TARGET%\"
+
 REM GLib dependencies
 copy "%GST_ROOT%\bin\glib-2.0-0.dll" "%TARGET%\"
 copy "%GST_ROOT%\bin\gobject-2.0-0.dll" "%TARGET%\"
