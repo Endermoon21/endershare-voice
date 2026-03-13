@@ -35,6 +35,13 @@ fn setup_bundled_gstreamer() {
                     log::warn!("SetDllDirectory failed for {:?}", app_dir);
                 }
 
+                // Also add to PATH for transitive dependencies
+                if let Ok(current_path) = std::env::var("PATH") {
+                    let new_path = format!("{};{}", app_dir.display(), current_path);
+                    std::env::set_var("PATH", &new_path);
+                    log::info!("Added app_dir to PATH");
+                }
+
                 // Set plugin path to app directory
                 std::env::set_var("GST_PLUGIN_PATH", app_dir);
                 log::info!("Set GST_PLUGIN_PATH to {:?}", app_dir);
