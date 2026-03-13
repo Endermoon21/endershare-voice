@@ -16,11 +16,59 @@ use tauri::{utils::config::AppUrl, WindowUrl};
 #[cfg(target_os = "windows")]
 fn setup_bundled_gstreamer() {
     use std::os::windows::ffi::OsStrExt;
+    use std::io::Write;
+
+    // Create a debug log file for troubleshooting
+    let debug_log = || -> Option<std::fs::File> {
+        let exe_path = std::env::current_exe().ok()?;
+        let app_dir = exe_path.parent()?;
+        let log_path = app_dir.join("gstreamer-debug.log");
+        std::fs::File::create(log_path).ok()
+    };
+
+    let mut log_file = debug_log();
+    let log = |file: &mut Option<std::fs::File>, msg: &str| {
+        if let Some(f) = file {
+            let _ = writeln!(f, "{}", msg);
+        }
+    };
 
     if let Ok(exe_path) = std::env::current_exe() {
+        log(&mut log_file, &format!("exe_path: {:?}", exe_path));
+
         if let Some(app_dir) = exe_path.parent() {
+            log(&mut log_file, &format!("app_dir: {:?}", app_dir));
+
+            // List all DLLs in app_dir for debugging
+            if let Ok(entries) = std::fs::read_dir(app_dir) {
+                let dlls: Vec<String> = entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().map_or(false, |ext| ext == "dll"))
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect();
+                log(&mut log_file, &format!("DLLs in app_dir: {:?}", dlls));
+            }
+
+            // Also check resources folder
+            let resources_dir = app_dir.join("resources");
+            if resources_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&resources_dir) {
+                    let dlls: Vec<String> = entries
+                        .filter_map(|e| e.ok())
+                        .filter(|e| e.path().extension().map_or(false, |ext| ext == "dll"))
+                        .map(|e| e.file_name().to_string_lossy().to_string())
+                        .collect();
+                    log(&mut log_file, &format!("DLLs in resources: {:?}", dlls));
+                }
+            } else {
+                log(&mut log_file, "resources folder does not exist");
+            }
+
             // Check if bundled DLLs exist
-            if app_dir.join("gstreamer-1.0-0.dll").exists() {
+            let gst_dll = app_dir.join("gstreamer-1.0-0.dll");
+            log(&mut log_file, &format!("Checking for: {:?} exists={}", gst_dll, gst_dll.exists()));
+
+            if gst_dll.exists() {
                 // Set DLL search directory for transitive dependencies
                 #[link(name = "kernel32")]
                 extern "system" {
@@ -29,6 +77,7 @@ fn setup_bundled_gstreamer() {
 
                 let wide: Vec<u16> = app_dir.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
                 let result = unsafe { SetDllDirectoryW(wide.as_ptr()) };
+                log(&mut log_file, &format!("SetDllDirectory result: {}", result));
                 if result != 0 {
                     log::info!("SetDllDirectory succeeded for {:?}", app_dir);
                 } else {
@@ -39,23 +88,33 @@ fn setup_bundled_gstreamer() {
                 if let Ok(current_path) = std::env::var("PATH") {
                     let new_path = format!("{};{}", app_dir.display(), current_path);
                     std::env::set_var("PATH", &new_path);
+                    log(&mut log_file, "Added app_dir to PATH");
                     log::info!("Added app_dir to PATH");
                 }
 
                 // Set plugin path to app directory
                 std::env::set_var("GST_PLUGIN_PATH", app_dir);
+                log(&mut log_file, &format!("Set GST_PLUGIN_PATH to {:?}", app_dir));
                 log::info!("Set GST_PLUGIN_PATH to {:?}", app_dir);
+
+                // Enable GStreamer debug output
+                std::env::set_var("GST_DEBUG", "3");
+                std::env::set_var("GST_DEBUG_FILE", app_dir.join("gstreamer-runtime.log").to_string_lossy().to_string());
 
                 // Use app-local registry
                 let registry_path = app_dir.join("gstreamer-registry.bin");
                 std::env::set_var("GST_REGISTRY", &registry_path);
+                log(&mut log_file, &format!("Set GST_REGISTRY to {:?}", registry_path));
 
                 // Disable forking for plugin scanning
                 std::env::set_var("GST_REGISTRY_FORK", "no");
 
                 // Isolate from system plugins
                 std::env::set_var("GST_PLUGIN_SYSTEM_PATH", "");
+
+                log(&mut log_file, "GStreamer setup complete");
             } else {
+                log(&mut log_file, "gstreamer-1.0-0.dll NOT FOUND in app_dir");
                 log::warn!("Bundled GStreamer DLLs not found in {:?}", app_dir);
             }
         }
