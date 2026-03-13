@@ -11,13 +11,55 @@ mod upload;
 
 use tauri::{utils::config::AppUrl, WindowUrl};
 
+/// Add GStreamer bin directory to PATH if not already present
+/// This is needed because the GStreamer installer sets PATH but requires
+/// a restart/relogin for the change to take effect
+#[cfg(target_os = "windows")]
+fn setup_gstreamer_path() {
+    // Standard GStreamer installation paths
+    let gst_paths = [
+        "C:\\Program Files\\gstreamer\\1.0\\msvc_x86_64\\bin",
+        "C:\\gstreamer\\1.0\\msvc_x86_64\\bin",
+    ];
+
+    // Check if GStreamer is already in PATH
+    if let Ok(path) = std::env::var("PATH") {
+        if path.to_lowercase().contains("gstreamer") {
+            log::info!("GStreamer already in PATH");
+            return;
+        }
+    }
+
+    // Find and add GStreamer to PATH
+    for gst_path in &gst_paths {
+        let path = std::path::Path::new(gst_path);
+        if path.exists() && path.join("gstreamer-1.0-0.dll").exists() {
+            if let Ok(current_path) = std::env::var("PATH") {
+                let new_path = format!("{};{}", gst_path, current_path);
+                std::env::set_var("PATH", &new_path);
+                log::info!("Added GStreamer to PATH: {}", gst_path);
+            }
+            return;
+        }
+    }
+
+    log::warn!("GStreamer installation not found in standard locations");
+}
+
+#[cfg(not(target_os = "windows"))]
+fn setup_gstreamer_path() {
+    // No-op on non-Windows platforms
+}
+
 fn main() {
     // Initialize logger for debug output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .init();
 
+    // Add GStreamer to PATH before initialization
+    setup_gstreamer_path();
+
     // Initialize GStreamer (uses system installation set up by NSIS installer)
-    // GStreamer installer sets GSTREAMER_1_0_ROOT_MSVC_X86_64 and adds bin to PATH
     if let Err(e) = gstreamer::init() {
         log::error!("Failed to initialize GStreamer: {}. Streaming will not be available.", e);
         log::error!("Please ensure GStreamer is installed. The installer should have set it up automatically.");
