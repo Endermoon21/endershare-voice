@@ -1,7 +1,7 @@
 {
   "package": {
     "productName": "Cinny-Min",
-    "version": "4.12.84"
+    "version": "4.12.85"
   },
   "build": {
     "withGlobalTauri": true,
@@ -71,6 +71,13 @@
         "gstwebrtcnice-1.0-0.dll",
         "gstwinrt-1.0-0.dll",
         "gstx264.dll",
+        "gstvideoparsersbad.dll",
+        "gstencoding.dll",
+        "gstplayback.dll",
+        "gstopus.dll",
+        "gstrtpmanager.dll",
+        "gstrtpmanagerbad.dll",
+        "opus-0.dll",
         "intl-8.dll",
         "libcrypto-3-x64.dll",
         "libssl-3-x64.dll",
