@@ -1052,30 +1052,27 @@ pub async fn check_gstreamer(_app: AppHandle) -> Result<GStreamerInfo, String> {
     #[cfg(not(target_os = "windows"))]
     let has_d3d11 = false;
 
+    // Check for encoder elements that whipclientsink needs
+    let has_x264enc = gst::ElementFactory::find("x264enc").is_some();
+    let has_openh264enc = gst::ElementFactory::find("openh264enc").is_some();
+    let has_rtph264pay = gst::ElementFactory::find("rtph264pay").is_some();
+
     log_to_file(&format!(
-        "GStreamer plugins - whipclientsink: {}, d3d11: {}",
-        has_whip, has_d3d11
+        "GStreamer plugins - whipclientsink: {}, d3d11: {}, x264enc: {}, openh264enc: {}, rtph264pay: {}",
+        has_whip, has_d3d11, has_x264enc, has_openh264enc, has_rtph264pay
     ));
 
-    // If plugins not found, log additional debug info
-    if !has_whip || !has_d3d11 {
-        if let Ok(plugin_path) = std::env::var("GST_PLUGIN_PATH") {
-            log_to_file(&format!("GST_PLUGIN_PATH: {}", plugin_path));
-        }
-        if let Ok(registry) = std::env::var("GST_REGISTRY") {
-            log_to_file(&format!("GST_REGISTRY: {}", registry));
-        }
-        if let Ok(fork) = std::env::var("GST_REGISTRY_FORK") {
-            log_to_file(&format!("GST_REGISTRY_FORK: {}", fork));
-        }
-
-        // List all loaded plugins for debugging
-        let registry = gst::Registry::get();
-        let plugins: Vec<String> = registry.plugins().iter()
-            .map(|p| p.plugin_name().to_string())
-            .collect();
-        log_to_file(&format!("Loaded plugins ({}): {:?}", plugins.len(), plugins));
+    // Always log plugin info for debugging
+    if let Ok(plugin_path) = std::env::var("GST_PLUGIN_PATH") {
+        log_to_file(&format!("GST_PLUGIN_PATH: {}", plugin_path));
     }
+
+    // List all loaded plugins for debugging
+    let registry = gst::Registry::get();
+    let plugins: Vec<String> = registry.plugins().iter()
+        .map(|p| p.plugin_name().to_string())
+        .collect();
+    log_to_file(&format!("Loaded plugins ({}): {:?}", plugins.len(), plugins));
 
     Ok(GStreamerInfo {
         available: true,
