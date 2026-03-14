@@ -706,8 +706,17 @@ fn build_video_capture(config: &StreamConfig) -> String {
         // Queue for stability - small buffer for low latency
         video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
-        // Download from GPU memory to system memory for whipclientsink
+        // Download from GPU memory to system memory
         video.push_str(" ! d3d11download");
+
+        // Explicit H.264 encoding with x264 (whipclientsink internal encoding not working with bundled plugins)
+        let bitrate_kbps = config.bitrate; // Already in kbps
+        video.push_str(" ! videoconvert");
+        video.push_str(&format!(
+            " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max={}",
+            bitrate_kbps, config.fps
+        ));
+        video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
     }
 
     #[cfg(target_os = "linux")]
