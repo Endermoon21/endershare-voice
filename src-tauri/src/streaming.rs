@@ -716,7 +716,8 @@ fn build_video_capture(config: &StreamConfig) -> String {
             " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max={}",
             bitrate_kbps, config.fps
         ));
-        video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
+        // h264parse ensures proper NAL framing for WebRTC
+        video.push_str(" ! h264parse config-interval=-1");
     }
 
     #[cfg(target_os = "linux")]
@@ -780,21 +781,12 @@ fn build_audio_capture() -> String {
 
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
-    let bitrate_bps = (config.bitrate * 1000) as u64;
-    let start_bitrate = bitrate_bps * 3 / 4; // Start at 75% of max for faster ramp
-
-    // Build WHIP sink properties with bitrate configuration
+    // Build WHIP sink properties - no video-caps since we provide pre-encoded H.264
     let mut whip_props = format!(
         "whipclientsink name=whip \
-video-caps=\"video/x-h264,profile=constrained-baseline\" \
-start-bitrate={} \
-min-bitrate=500000 \
-max-bitrate={} \
 do-fec=true \
 do-retransmission=true \
 signaller::whip-endpoint=\"{}\"",
-        start_bitrate,
-        bitrate_bps,
         config.whip_url
     );
 
@@ -806,11 +798,6 @@ signaller::whip-endpoint=\"{}\"",
     // GstValueArray format requires escaped quotes: <"url1", "url2">
     if let Some(ref turn) = config.turn_server {
         whip_props.push_str(&format!(" turn-servers=\"<\\\"{}\\\">\"", turn));
-    }
-
-    // Add audio-caps if audio is enabled
-    if config.audio_enabled {
-        whip_props.push_str(" audio-caps=\"audio/x-opus\"");
     }
 
     // Build complete pipeline
