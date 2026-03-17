@@ -712,18 +712,8 @@ fn build_video_capture(config: &StreamConfig) -> String {
         video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
         // Download from GPU memory to system memory
+        // whipclientsink handles encoding internally when video-caps is set
         video.push_str(" ! d3d11download");
-
-        // Convert to I420 and encode with x264
-        // whipclientsink's internal encoder discovery fails on some systems
-        // so we explicitly encode to H.264 before passing to WHIP
-        video.push_str(" ! videoconvert ! video/x-raw,format=I420");
-        video.push_str(&format!(
-            " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max=60",
-            config.bitrate
-        ));
-        video.push_str(" ! video/x-h264,profile=baseline");
-        video.push_str(" ! h264parse");
     }
 
     #[cfg(target_os = "linux")]
@@ -788,12 +778,18 @@ fn build_audio_capture() -> String {
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // Build WHIP sink properties
-    // We now provide pre-encoded H.264, so no video-caps needed
+    // video-caps tells whipclientsink what codec to use for internal encoding
     let mut whip_props = format!(
         "whipclientsink name=whip \
+video-caps=\"video/x-h264,profile=baseline\" \
+start-bitrate={} \
+min-bitrate=500000 \
+max-bitrate={} \
 do-fec=true \
 do-retransmission=true \
 signaller::whip-endpoint=\"{}\"",
+        config.bitrate * 1000,
+        config.bitrate * 1000 * 2,
         config.whip_url
     );
 
