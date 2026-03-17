@@ -8,7 +8,7 @@
 //! Uses gstreamer-rs crate directly instead of spawning gst-launch-1.0 process.
 
 use gstreamer as gst;
-use gst::prelude::{Cast, ElementExt, ElementExtManual, GstBinExt, GstObjectExt};
+use gst::prelude::{Cast, ElementExt, ElementExtManual, GstBinExt, GstBinExtManual, GstObjectExt, ObjectExt};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::fs::OpenOptions;
@@ -882,8 +882,13 @@ pub async fn start_stream(
 
     // List all elements in the pipeline for debugging
     log_to_file("=== PIPELINE ELEMENTS ===");
-    for element in pipeline.iterate_elements().into_iter().flatten() {
-        log_to_file(&format!("  Element: {} ({})", element.name(), element.factory().map(|f| f.name().to_string()).unwrap_or_else(|| "no factory".to_string())));
+    for element in pipeline.iterate_elements() {
+        if let Ok(elem) = element {
+            let factory_name = elem.factory()
+                .map(|f| f.name().to_string())
+                .unwrap_or_else(|| "no factory".to_string());
+            log_to_file(&format!("  Element: {} ({})", elem.name(), factory_name));
+        }
     }
     log_to_file("=== END ELEMENTS ===");
 
@@ -979,9 +984,9 @@ pub async fn start_stream(
                     // Only log state changes for the pipeline itself
                     if msg.src().map(|s| s.type_().name() == "GstPipeline").unwrap_or(false) {
                         log_to_file(&format!(
-                            "STATE CHANGED: {} -> {} (pending: {:?})",
-                            state_changed.old().to_str(),
-                            state_changed.current().to_str(),
+                            "STATE CHANGED: {:?} -> {:?} (pending: {:?})",
+                            state_changed.old(),
+                            state_changed.current(),
                             state_changed.pending()
                         ));
                     }
