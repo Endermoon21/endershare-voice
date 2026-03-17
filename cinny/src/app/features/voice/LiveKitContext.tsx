@@ -230,8 +230,18 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
 
 // Handle incoming screen share tracks from remote participants (including WHIP ingress)
   const handleTrackSubscribed = useCallback((track: RemoteTrack, publication: any, participant: RemoteParticipant) => {
+    console.log("[LiveKit DEBUG] TrackSubscribed event:", {
+      participantIdentity: participant.identity,
+      participantName: participant.name,
+      trackKind: track.kind,
+      trackSource: track.source,
+      trackSid: track.sid,
+      publicationSource: publication?.source,
+    });
+
     // Check if this is a WHIP ingress participant (identity ends with -stream)
     const isIngressStream = participant.identity.endsWith("-stream");
+    console.log("[LiveKit DEBUG] isIngressStream:", isIngressStream);
     
     if (track.kind === Track.Kind.Audio) {
       if (track.source === Track.Source.ScreenShareAudio || (isIngressStream && track.source === Track.Source.Microphone)) {
@@ -419,7 +429,16 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
 
       // DEBUG: Add comprehensive event logging
       room.on(RoomEvent.SignalConnected, () => console.log("[LiveKit DEBUG] Signal connected (WebSocket established)"));
-      room.on(RoomEvent.Connected, () => console.log("[LiveKit DEBUG] Room connected successfully"));
+      room.on(RoomEvent.Connected, () => {
+        console.log("[LiveKit DEBUG] Room connected successfully");
+        // Log all existing participants when we connect
+        room.remoteParticipants.forEach((p) => {
+          console.log("[LiveKit DEBUG] Existing participant:", p.identity, "tracks:", p.trackPublications.size);
+          p.trackPublications.forEach((pub) => {
+            console.log("[LiveKit DEBUG]   Track:", pub.trackSid, "source:", pub.source, "kind:", pub.kind, "subscribed:", pub.isSubscribed);
+          });
+        });
+      });
       room.on(RoomEvent.Reconnecting, () => console.log("[LiveKit DEBUG] Reconnecting..."));
       room.on(RoomEvent.Reconnected, () => console.log("[LiveKit DEBUG] Reconnected"));
       room.on(RoomEvent.MediaDevicesError, (e) => console.error("[LiveKit DEBUG] Media devices error:", e));
@@ -428,7 +447,13 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       });
       room.on(RoomEvent.SignalReconnecting, () => console.log("[LiveKit DEBUG] Signal reconnecting..."));
 
-      room.on(RoomEvent.ParticipantConnected, updateParticipants);
+      room.on(RoomEvent.ParticipantConnected, (participant) => {
+        console.log("[LiveKit DEBUG] ParticipantConnected:", participant.identity, "tracks:", participant.trackPublications.size);
+        participant.trackPublications.forEach((pub) => {
+          console.log("[LiveKit DEBUG]   Track:", pub.trackSid, "source:", pub.source, "kind:", pub.kind);
+        });
+        updateParticipants();
+      });
       room.on(RoomEvent.ParticipantDisconnected, updateParticipants);
       room.on(RoomEvent.TrackMuted, updateParticipants);
       room.on(RoomEvent.TrackUnmuted, updateParticipants);
