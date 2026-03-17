@@ -368,10 +368,21 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
     setIsConnecting(true); setError(null);
     try {
+      // DEBUG: Log connection attempt
+      console.log("[LiveKit DEBUG] === Connection attempt ===");
+      console.log("[LiveKit DEBUG] Room:", roomName, "User:", displayName);
+      console.log("[LiveKit DEBUG] LiveKit URL:", LIVEKIT_URL);
+      console.log("[LiveKit DEBUG] Token server:", TOKEN_SERVER_URL);
+
       const tokenUrl = TOKEN_SERVER_URL + "/token?room=" + encodeURIComponent(roomName) + "&username=" + encodeURIComponent(displayName);
+      console.log("[LiveKit DEBUG] Fetching token from:", tokenUrl);
+
       const response = await fetch(tokenUrl);
+      console.log("[LiveKit DEBUG] Token response status:", response.status);
       if (!response.ok) throw new Error("Token server error: " + response.status);
       const data = await response.json();
+      console.log("[LiveKit DEBUG] Token received, room:", data.room, "username:", data.username);
+      console.log("[LiveKit DEBUG] ICE servers from response:", data.iceServers ? data.iceServers.length + " servers" : "none");
 
       const roomOptions: RoomOptions = {
         adaptiveStream: false, // Disabled for faster stream ingress subscription
@@ -405,6 +416,18 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
 
       const room = new Room(roomOptions);
       roomRef.current = room;
+
+      // DEBUG: Add comprehensive event logging
+      room.on(RoomEvent.SignalConnected, () => console.log("[LiveKit DEBUG] Signal connected (WebSocket established)"));
+      room.on(RoomEvent.Connected, () => console.log("[LiveKit DEBUG] Room connected successfully"));
+      room.on(RoomEvent.Reconnecting, () => console.log("[LiveKit DEBUG] Reconnecting..."));
+      room.on(RoomEvent.Reconnected, () => console.log("[LiveKit DEBUG] Reconnected"));
+      room.on(RoomEvent.MediaDevicesError, (e) => console.error("[LiveKit DEBUG] Media devices error:", e));
+      room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+        console.log("[LiveKit DEBUG] Connection quality:", quality, "for:", participant?.identity || "local");
+      });
+      room.on(RoomEvent.SignalReconnecting, () => console.log("[LiveKit DEBUG] Signal reconnecting..."));
+
       room.on(RoomEvent.ParticipantConnected, updateParticipants);
       room.on(RoomEvent.ParticipantDisconnected, updateParticipants);
       room.on(RoomEvent.TrackMuted, updateParticipants);
@@ -421,7 +444,10 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
         }
       });
       room.on(RoomEvent.LocalTrackUnpublished, updateParticipants);
-      room.on(RoomEvent.Disconnected, () => { setIsConnected(false); setCurrentRoom(null); setParticipants([]); setScreenShareInfo(null); setShowVoiceView(false); });
+      room.on(RoomEvent.Disconnected, (reason) => {
+        console.log("[LiveKit DEBUG] Disconnected, reason:", reason);
+        setIsConnected(false); setCurrentRoom(null); setParticipants([]); setScreenShareInfo(null); setShowVoiceView(false);
+      });
 
       const iceServers = data.iceServers && data.iceServers.length > 0
         ? [{ urls: "stun:stun.l.google.com:19302" }, ...data.iceServers]
@@ -430,19 +456,52 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
             { urls: ["turn:100.89.14.34:3478?transport=udp"], username: "livekit", credential: "turnpassword123" },
             { urls: ["turn:144.24.3.66:3478?transport=udp", "turn:144.24.3.66:3478?transport=tcp"], username: "livekit", credential: "turnpassword123" }
           ];
-      console.log("[LiveKit] Using ICE servers:", iceServers.length, "servers", data.iceServers ? "(from Cloudflare)" : "(fallback)");
+
+      // DEBUG: Log full ICE server configuration
+      console.log("[LiveKit DEBUG] ICE servers configuration:");
+      iceServers.forEach((server, i) => {
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        console.log(`[LiveKit DEBUG]   Server ${i}: ${urls.join(", ")}${server.username ? " (with credentials)" : ""}`);
+      });
+      console.log("[LiveKit DEBUG] ICE transport policy: all");
 
       const connectOptions: RoomConnectOptions = {
         rtcConfig: { iceServers, iceTransportPolicy: "all" }
       };
 
-      await room.connect(LIVEKIT_URL, data.token, connectOptions);
+      console.log("[LiveKit DEBUG] Connecting to:", LIVEKIT_URL);
+      console.log("[LiveKit DEBUG] Token length:", data.token?.length || 0);
+
+      // Add timeout to detect stuck connections
+      const connectTimeout = setTimeout(() => {
+        console.error("[LiveKit DEBUG] Connection timeout - stuck after 15 seconds");
+        console.log("[LiveKit DEBUG] Room state:", room.state);
+      }, 15000);
+
+      try {
+        await room.connect(LIVEKIT_URL, data.token, connectOptions);
+        clearTimeout(connectTimeout);
+        console.log("[LiveKit DEBUG] room.connect() completed successfully");
+      } catch (connectErr) {
+        clearTimeout(connectTimeout);
+        console.error("[LiveKit DEBUG] room.connect() failed:", connectErr);
+        throw connectErr;
+      }
       setIsConnected(true); setCurrentRoom(roomName); setIsMuted(true); setShowVoiceView(true); updateParticipants();
       try { await room.localParticipant.setMicrophoneEnabled(true); setIsMuted(false); } catch (micErr) { console.error("[LiveKit] Mic error:", micErr); }
       const audioTracks = Array.from(room.localParticipant.audioTrackPublications.values());
       if (audioTracks.length > 0 && audioTracks[0].track) setMicrophoneTrack(audioTracks[0].track);
       updateParticipants(); startDiagnostics();
-    } catch (err) { console.error("[LiveKit] Connection error:", err); setError(err instanceof Error ? err.message : String(err)); if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
+    } catch (err) {
+      console.error("[LiveKit DEBUG] === CONNECTION FAILED ===");
+      console.error("[LiveKit DEBUG] Error type:", err?.constructor?.name);
+      console.error("[LiveKit DEBUG] Error message:", err instanceof Error ? err.message : String(err));
+      console.error("[LiveKit DEBUG] Full error:", err);
+      if (err instanceof Error && err.stack) {
+        console.error("[LiveKit DEBUG] Stack trace:", err.stack);
+      }
+      setError(err instanceof Error ? err.message : String(err));
+      if (roomRef.current) { try { roomRef.current.disconnect(); } catch (e) {} roomRef.current = null; }
     } finally { setIsConnecting(false); }
   }, [updateParticipants, handleTrackSubscribed, handleTrackUnsubscribed, startDiagnostics]);
 
