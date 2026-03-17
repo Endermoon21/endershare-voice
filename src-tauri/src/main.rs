@@ -11,16 +11,41 @@ mod upload;
 
 use tauri::{utils::config::AppUrl, WindowUrl};
 
-/// Set up bundled GStreamer DLLs for loading
-/// DLLs are copied to the app directory by the NSIS installer
+/// Set up GStreamer - prefer system installation, fall back to bundled
 #[cfg(target_os = "windows")]
 fn setup_bundled_gstreamer() {
     use std::os::windows::ffi::OsStrExt;
+    use std::path::PathBuf;
 
+    // Check for system GStreamer installation first
+    let system_gst = PathBuf::from(r"C:\Program Files\gstreamer\1.0\msvc_x86_64");
+    let system_gst_bin = system_gst.join("bin");
+    let system_gst_plugins = system_gst.join("lib").join("gstreamer-1.0");
+
+    if system_gst_bin.join("gstreamer-1.0-0.dll").exists() {
+        log::info!("Found system GStreamer at {:?}", system_gst);
+
+        // Add system GStreamer bin to PATH
+        if let Ok(current_path) = std::env::var("PATH") {
+            let new_path = format!("{};{}", system_gst_bin.display(), current_path);
+            std::env::set_var("PATH", &new_path);
+            log::info!("Added system GStreamer bin to PATH");
+        }
+
+        // Set plugin path to system location
+        std::env::set_var("GST_PLUGIN_PATH", &system_gst_plugins);
+        log::info!("Set GST_PLUGIN_PATH to {:?}", system_gst_plugins);
+
+        // Use system GStreamer - don't isolate
+        return;
+    }
+
+    // Fall back to bundled DLLs
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(app_dir) = exe_path.parent() {
-            // Check if bundled DLLs exist
             if app_dir.join("gstreamer-1.0-0.dll").exists() {
+                log::info!("Using bundled GStreamer from {:?}", app_dir);
+
                 // Set DLL search directory for transitive dependencies
                 #[link(name = "kernel32")]
                 extern "system" {
@@ -52,10 +77,10 @@ fn setup_bundled_gstreamer() {
                 // Disable forking for plugin scanning
                 std::env::set_var("GST_REGISTRY_FORK", "no");
 
-                // Isolate from system plugins
+                // Isolate from system plugins to avoid conflicts
                 std::env::set_var("GST_PLUGIN_SYSTEM_PATH", "");
             } else {
-                log::warn!("Bundled GStreamer DLLs not found in {:?}", app_dir);
+                log::warn!("No GStreamer found - streaming will not be available");
             }
         }
     }
