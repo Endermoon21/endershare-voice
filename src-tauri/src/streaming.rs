@@ -781,7 +781,7 @@ fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // video-caps tells whipclientsink what codec to use for internal encoding
     let mut whip_props = format!(
         "whipclientsink name=whip \
-video-caps=\"video/x-h264,profile=baseline\" \
+video-caps=\"video/x-h264,profile=constrained-baseline\" \
 start-bitrate={} \
 min-bitrate=500000 \
 max-bitrate={} \
