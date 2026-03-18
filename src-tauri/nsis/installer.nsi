@@ -505,8 +505,8 @@ Section GStreamer
   ; Extract bundled GStreamer installer (embedded in this installer)
   DetailPrint "Extracting GStreamer runtime..."
   SetOutPath "$TEMP"
-  ; File is copied to NSIS build directory by build-windows.ps1
-  File "gstreamer-setup.exe"
+  ; Path is replaced by build-windows.ps1 with absolute path
+  File "{{GSTREAMER_INSTALLER_PATH}}"
 
   IfFileExists "$TEMP\gstreamer-setup.exe" gstreamer_install
 

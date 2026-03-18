@@ -40,18 +40,23 @@ Write-Host "`nSetting GStreamer environment..." -ForegroundColor Cyan
 $env:PATH = "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;$env:PATH"
 $env:PKG_CONFIG_PATH = "C:\Program Files\gstreamer\1.0\msvc_x86_64\lib\pkgconfig"
 
-# Copy GStreamer installer to where NSIS can find it during bundle
-# NSIS runs from src-tauri\target\release\nsis\x64\ so we copy there
-$nsisDir = "src-tauri\target\release\nsis\x64"
-if (-not (Test-Path $nsisDir)) {
-    New-Item -ItemType Directory -Path $nsisDir -Force | Out-Null
-}
-Copy-Item $GSTREAMER_FILE "$nsisDir\gstreamer-setup.exe" -Force
-Write-Host "Copied GStreamer installer to NSIS build directory" -ForegroundColor Green
+# Replace placeholder in installer.nsi with absolute GStreamer path
+$gstreamerAbsPath = (Resolve-Path $GSTREAMER_FILE).Path
+$installerNsi = "src-tauri\nsis\installer.nsi"
+$content = Get-Content $installerNsi -Raw
+$content = $content -replace '\{\{GSTREAMER_INSTALLER_PATH\}\}', $gstreamerAbsPath
+$content | Set-Content $installerNsi -NoNewline
+Write-Host "Updated installer.nsi with GStreamer path: $gstreamerAbsPath" -ForegroundColor Green
 
 # Build Tauri app
 Write-Host "`nBuilding Tauri application..." -ForegroundColor Cyan
 npx tauri build
+
+# Restore the placeholder for git cleanliness
+$content = Get-Content $installerNsi -Raw
+$content = $content -replace [regex]::Escape($gstreamerAbsPath), '{{GSTREAMER_INSTALLER_PATH}}'
+$content | Set-Content $installerNsi -NoNewline
+Write-Host "Restored installer.nsi placeholder" -ForegroundColor Green
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Tauri build failed" -ForegroundColor Red
