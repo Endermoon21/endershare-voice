@@ -502,13 +502,15 @@ Section GStreamer
   ; Check if GStreamer is already installed
   IfFileExists "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\bin\gstreamer-1.0-0.dll" gstreamer_done
 
-  ; Extract bundled GStreamer installer (embedded in this installer)
+  ; Extract bundled GStreamer installer to PLUGINSDIR (auto-cleaned on exit)
   DetailPrint "Extracting GStreamer runtime..."
-  SetOutPath "$TEMP"
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
   ; Path is replaced by build-windows.ps1 with absolute path
-  File "{{GSTREAMER_INSTALLER_PATH}}"
+  ; Use /oname to ensure consistent filename regardless of source path
+  File /oname=gstreamer-setup.exe "{{GSTREAMER_INSTALLER_PATH}}"
 
-  IfFileExists "$TEMP\gstreamer-setup.exe" gstreamer_install
+  IfFileExists "$PLUGINSDIR\gstreamer-setup.exe" gstreamer_install
 
   ; Extraction failed - shouldn't happen but handle it
   DetailPrint "ERROR: Failed to extract GStreamer installer"
@@ -517,28 +519,41 @@ Section GStreamer
 
   gstreamer_install:
   DetailPrint "Installing GStreamer runtime (this may take a minute)..."
-  ; Run GStreamer installer silently with default options
-  ExecWait '"$TEMP\gstreamer-setup.exe" /S' $1
-  ${If} $1 == 0
-    DetailPrint "GStreamer installed successfully"
-    ; Set environment variables
-    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "GST_PLUGIN_PATH" "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0"
-    ; Add GStreamer bin to PATH
-    ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-    StrCpy $1 "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\bin"
-    ${StrLoc} $2 $0 $1 ">"
-    ${If} $2 == ""
-      WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$1"
-    ${EndIf}
-    ; Broadcast environment change
-    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
-  ${Else}
-    DetailPrint "GStreamer installation failed (exit code: $1)"
-    MessageBox MB_OK|MB_ICONEXCLAMATION "GStreamer installation failed. Streaming features may not work.$\n$\nYou can manually install GStreamer from:$\nhttps://cinny-updates.endershare.org/gstreamer-1.0-msvc-x86_64-1.28.1.exe"
+  ; Try NSIS-style silent first (/S), then Inno Setup style if that fails
+  ; GStreamer Windows installer may use either framework
+  ExecWait '"$PLUGINSDIR\gstreamer-setup.exe" /S' $1
+
+  ; Check if GStreamer was installed successfully
+  IfFileExists "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\bin\gstreamer-1.0-0.dll" gstreamer_success
+
+  ; NSIS silent might have failed, try Inno Setup style
+  DetailPrint "Trying alternative silent mode..."
+  ExecWait '"$PLUGINSDIR\gstreamer-setup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART' $1
+
+  ; Final check
+  IfFileExists "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\bin\gstreamer-1.0-0.dll" gstreamer_success
+
+  ; Installation failed
+  DetailPrint "GStreamer installation failed"
+  MessageBox MB_OK|MB_ICONEXCLAMATION "GStreamer installation failed. Streaming features may not work.$\n$\nPlease manually install GStreamer from:$\nhttps://cinny-updates.endershare.org/gstreamer-1.0-msvc-x86_64-1.28.1.exe"
+  Goto gstreamer_done
+
+  gstreamer_success:
+  DetailPrint "GStreamer installed successfully"
+  ; Set environment variables
+  WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "GST_PLUGIN_PATH" "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0"
+  ; Add GStreamer bin to PATH
+  ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+  StrCpy $1 "$PROGRAMFILES64\gstreamer\1.0\msvc_x86_64\bin"
+  ${StrLoc} $2 $0 $1 ">"
+  ${If} $2 == ""
+    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$1"
   ${EndIf}
-  Delete "$TEMP\gstreamer-setup.exe"
+  ; Broadcast environment change
+  SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
 
   gstreamer_done:
+  ; PLUGINSDIR is automatically cleaned up by NSIS
 SectionEnd
 
 !macro CheckIfAppIsRunning
