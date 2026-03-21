@@ -668,35 +668,6 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     Ok(sources)
 }
 
-/// Detect the best available H.264 encoder
-/// Priority: NVIDIA (nvh264enc) > AMD (amfh264enc) > Intel (qsvh264enc) > Software (x264enc)
-fn detect_h264_encoder() -> (&'static str, &'static str) {
-    // NVIDIA - best quality/performance
-    // profile=constrained-baseline required for WebRTC compatibility
-    if gst::ElementFactory::find("nvh264enc").is_some() {
-        log_to_file("Using NVIDIA hardware encoder (nvh264enc)");
-        return ("nvh264enc preset=low-latency-hq rc-mode=cbr profile=constrained-baseline", "h264parse");
-    }
-
-    // AMD AMF - good quality/performance
-    // profile=constrained-baseline required for WebRTC compatibility
-    if gst::ElementFactory::find("amfh264enc").is_some() {
-        log_to_file("Using AMD hardware encoder (amfh264enc)");
-        return ("amfh264enc usage=ultra-low-latency rate-control=cbr profile=constrained-baseline", "h264parse");
-    }
-
-    // Intel QuickSync
-    if gst::ElementFactory::find("qsvh264enc").is_some() {
-        log_to_file("Using Intel QuickSync encoder (qsvh264enc)");
-        return ("qsvh264enc low-latency=true profile=constrained-baseline", "h264parse");
-    }
-
-    // Software fallback - works everywhere
-    // profile=constrained-baseline required for WebRTC compatibility
-    log_to_file("Using software encoder (x264enc) - no hardware encoder found");
-    ("x264enc tune=zerolatency speed-preset=ultrafast profile=constrained-baseline", "h264parse")
-}
-
 /// Build video capture pipeline segment based on source
 fn build_video_capture(config: &StreamConfig) -> String {
     let mut video = String::new();
@@ -741,12 +712,8 @@ fn build_video_capture(config: &StreamConfig) -> String {
         video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
         // Download from GPU memory to system memory
+        // whipclientsink handles encoding internally when video-caps is set
         video.push_str(" ! d3d11download");
-
-        // H.264 encode - detect best available encoder (NVIDIA > AMD > Intel > x264)
-        let (encoder, parser) = detect_h264_encoder();
-        video.push_str(&format!(" ! {} bitrate={}", encoder, config.bitrate));
-        video.push_str(&format!(" ! {}", parser));
     }
 
     #[cfg(target_os = "linux")]
@@ -758,11 +725,6 @@ fn build_video_capture(config: &StreamConfig) -> String {
             config.width, config.height, config.fps
         ));
         video.push_str(" ! queue max-size-buffers=5 max-size-time=0 max-size-bytes=0 leaky=downstream");
-
-        // H.264 encode
-        let (encoder, parser) = detect_h264_encoder();
-        video.push_str(&format!(" ! {} bitrate={}", encoder, config.bitrate));
-        video.push_str(&format!(" ! {}", parser));
     }
 
     #[cfg(target_os = "macos")]
@@ -774,16 +736,6 @@ fn build_video_capture(config: &StreamConfig) -> String {
             config.width, config.height, config.fps
         ));
         video.push_str(" ! queue max-size-buffers=5 max-size-time=0 max-size-bytes=0 leaky=downstream");
-
-        // H.264 encode - macOS uses VideoToolbox (vtenc_h264) or x264
-        if gst::ElementFactory::find("vtenc_h264").is_some() {
-            log_to_file("Using macOS VideoToolbox encoder (vtenc_h264)");
-            video.push_str(&format!(" ! vtenc_h264 bitrate={} realtime=true", config.bitrate));
-        } else {
-            log_to_file("Using software encoder (x264enc) on macOS");
-            video.push_str(&format!(" ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={}", config.bitrate));
-        }
-        video.push_str(" ! h264parse");
     }
 
     video
@@ -826,7 +778,7 @@ fn build_audio_capture() -> String {
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
     // Build WHIP sink properties
-    // video-caps tells whipclientsink what encoded format to expect (must match encoder output)
+    // video-caps tells whipclientsink what codec to use for internal encoding
     let mut whip_props = format!(
         "whipclientsink name=whip \
 video-caps=\"video/x-h264,profile=constrained-baseline\" \
