@@ -716,32 +716,41 @@ fn build_video_capture(config: &StreamConfig) -> String {
 
         // NVIDIA: whipclientsink auto-detects nvh264enc internally, no explicit encoder needed
         // AMD/Intel/Software: whipclientsink can't find encoder, must add explicitly
+        // WebRTC requires: Constrained Baseline profile, CABAC disabled, SPS/PPS with keyframes
         if gst::ElementFactory::find("nvh264enc").is_none() {
-            log_to_file("No NVIDIA encoder found, adding explicit H.264 encoder");
+            log_to_file("No NVIDIA encoder found, adding explicit H.264 encoder for WebRTC");
 
             // Try AMD AMF encoder
+            // cabac=false required for Constrained Baseline (WebRTC compatibility)
+            // config-interval=-1 sends SPS/PPS with every IDR frame
             if gst::ElementFactory::find("amfh264enc").is_some() {
-                log_to_file("Using AMD AMF encoder (amfh264enc)");
+                log_to_file("Using AMD AMF encoder (amfh264enc) with WebRTC settings");
                 video.push_str(&format!(
-                    " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} ! h264parse",
+                    " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} cabac=false aud=true",
                     config.bitrate
                 ));
+                video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
+                video.push_str(" ! h264parse config-interval=-1");
             }
             // Try Intel QuickSync
             else if gst::ElementFactory::find("qsvh264enc").is_some() {
-                log_to_file("Using Intel QuickSync encoder (qsvh264enc)");
+                log_to_file("Using Intel QuickSync encoder (qsvh264enc) with WebRTC settings");
                 video.push_str(&format!(
-                    " ! qsvh264enc low-latency=true bitrate={} ! h264parse",
+                    " ! qsvh264enc low-latency=true bitrate={}",
                     config.bitrate
                 ));
+                video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
+                video.push_str(" ! h264parse config-interval=-1");
             }
             // Software fallback
             else if gst::ElementFactory::find("x264enc").is_some() {
-                log_to_file("Using software encoder (x264enc)");
+                log_to_file("Using software encoder (x264enc) with WebRTC settings");
                 video.push_str(&format!(
-                    " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} ! h264parse",
+                    " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max=60",
                     config.bitrate
                 ));
+                video.push_str(" ! video/x-h264,profile=constrained-baseline,stream-format=byte-stream");
+                video.push_str(" ! h264parse config-interval=-1");
             }
             else {
                 log_to_file("WARNING: No H.264 encoder found! Stream may fail.");
