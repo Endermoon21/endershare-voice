@@ -672,26 +672,29 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
 /// Priority: NVIDIA (nvh264enc) > AMD (amfh264enc) > Intel (qsvh264enc) > Software (x264enc)
 fn detect_h264_encoder() -> (&'static str, &'static str) {
     // NVIDIA - best quality/performance
+    // profile=constrained-baseline required for WebRTC compatibility
     if gst::ElementFactory::find("nvh264enc").is_some() {
         log_to_file("Using NVIDIA hardware encoder (nvh264enc)");
-        return ("nvh264enc preset=low-latency-hq rc-mode=cbr", "h264parse");
+        return ("nvh264enc preset=low-latency-hq rc-mode=cbr profile=constrained-baseline", "h264parse");
     }
 
-    // AMD - good quality/performance
+    // AMD AMF - good quality/performance
+    // profile=constrained-baseline required for WebRTC compatibility
     if gst::ElementFactory::find("amfh264enc").is_some() {
         log_to_file("Using AMD hardware encoder (amfh264enc)");
-        return ("amfh264enc usage=ultra-low-latency rate-control=cbr", "h264parse");
+        return ("amfh264enc usage=ultra-low-latency rate-control=cbr profile=constrained-baseline", "h264parse");
     }
 
     // Intel QuickSync
     if gst::ElementFactory::find("qsvh264enc").is_some() {
         log_to_file("Using Intel QuickSync encoder (qsvh264enc)");
-        return ("qsvh264enc low-latency=true", "h264parse");
+        return ("qsvh264enc low-latency=true profile=constrained-baseline", "h264parse");
     }
 
     // Software fallback - works everywhere
+    // profile=constrained-baseline required for WebRTC compatibility
     log_to_file("Using software encoder (x264enc) - no hardware encoder found");
-    ("x264enc tune=zerolatency speed-preset=ultrafast", "h264parse")
+    ("x264enc tune=zerolatency speed-preset=ultrafast profile=constrained-baseline", "h264parse")
 }
 
 /// Build video capture pipeline segment based on source
