@@ -712,8 +712,43 @@ fn build_video_capture(config: &StreamConfig) -> String {
         video.push_str(" ! queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 leaky=downstream");
 
         // Download from GPU memory to system memory
-        // whipclientsink handles encoding internally when video-caps is set
         video.push_str(" ! d3d11download");
+
+        // NVIDIA: whipclientsink auto-detects nvh264enc internally, no explicit encoder needed
+        // AMD/Intel/Software: whipclientsink can't find encoder, must add explicitly
+        if gst::ElementFactory::find("nvh264enc").is_none() {
+            log_to_file("No NVIDIA encoder found, adding explicit H.264 encoder");
+
+            // Try AMD AMF encoder
+            if gst::ElementFactory::find("amfh264enc").is_some() {
+                log_to_file("Using AMD AMF encoder (amfh264enc)");
+                video.push_str(&format!(
+                    " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} ! h264parse",
+                    config.bitrate
+                ));
+            }
+            // Try Intel QuickSync
+            else if gst::ElementFactory::find("qsvh264enc").is_some() {
+                log_to_file("Using Intel QuickSync encoder (qsvh264enc)");
+                video.push_str(&format!(
+                    " ! qsvh264enc low-latency=true bitrate={} ! h264parse",
+                    config.bitrate
+                ));
+            }
+            // Software fallback
+            else if gst::ElementFactory::find("x264enc").is_some() {
+                log_to_file("Using software encoder (x264enc)");
+                video.push_str(&format!(
+                    " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} ! h264parse",
+                    config.bitrate
+                ));
+            }
+            else {
+                log_to_file("WARNING: No H.264 encoder found! Stream may fail.");
+            }
+        } else {
+            log_to_file("NVIDIA encoder available, letting whipclientsink handle encoding");
+        }
     }
 
     #[cfg(target_os = "linux")]
