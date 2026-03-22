@@ -9,7 +9,7 @@ VOLTA_HOST="sshuser@100.99.120.85"
 VOLTA_PASS="1"
 DOCKER_HOST="root@100.89.14.34"
 DOCKER_PASS="lancache123"
-VOLTA_BUILD_PATH="C:/Users/VOLTA/cinny-desktop/src-tauri/target/release/bundle/nsis"
+VOLTA_BUILD_PATH="C:/Users/VOLTA/cinny-desktop/src-tauri/target/release/bundle/msi"
 UPDATE_SERVER_PATH="/opt/cinny-downloads"
 TAURI_KEY_PATH="/opt/cinny-keys/tauri.key"
 GITHUB_REPO="Endermoon21/endershare-voice"
@@ -29,8 +29,8 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-BUNDLE_NAME="Cinny-Min_${VERSION}_x64-setup.nsis.zip"
-EXE_NAME="Cinny-Min_${VERSION}_x64-setup.exe"
+BUNDLE_NAME="Cinny-Min_${VERSION}_x64_en-US.msi.zip"
+EXE_NAME="Cinny-Min_${VERSION}_x64_en-US.msi"
 echo -e "${YELLOW}Deploying version: ${VERSION}${NC}"
 echo -e "${YELLOW}Bundle: ${BUNDLE_NAME}${NC}"
 
