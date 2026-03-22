@@ -675,7 +675,7 @@ function ParticipantTile({ participant, avatarUrl, displayName, isStreamTile, st
 export function VoiceRoom() {
   const mx = useMatrixClient();
   const {
-    currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, connectionQuality,
+    currentRoom, participants, isMuted, isCameraEnabled, screenShareInfo, screenShares, connectionQuality,
     disconnect, toggleMute, toggleCamera, getScreenShareElement, getCameraElement, room,
     isNativeStreaming, currentIngressId, setCurrentIngressId, setIsNativeStreaming
   } = useLiveKitContext();
@@ -769,8 +769,8 @@ export function VoiceRoom() {
 
       // Count visible participants (exclude ingress users ending with -stream)
       const visibleCount = participants.filter(p => !p.identity.endsWith("-stream")).length;
-      // Add 1 for screen share tile if present
-      const totalTiles = visibleCount + (screenShareInfo ? 1 : 0);
+      // Add count for all screen share tiles
+      const totalTiles = visibleCount + screenShares.length;
 
       if (totalTiles > 0) {
         const newDimensions = calculateTileSize(containerWidth, containerHeight, totalTiles, 8);
@@ -788,7 +788,7 @@ export function VoiceRoom() {
     observer.observe(mainArea);
 
     return () => observer.disconnect();
-  }, [participants, screenShareInfo]);
+  }, [participants, screenShares]);
 
   const roomDisplayName = currentRoom ? currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1) : "Voice Channel";
   const qualityText = connectionQuality?.quality || "connecting";
@@ -823,19 +823,16 @@ export function VoiceRoom() {
               .map(p => p.identity.replace(/-stream$/, ""))
           );
 
-          // Get stream video element if someone is screen sharing
-          const streamVideoEl = screenShareInfo ? getScreenShareElement() : null;
-
-          if (visibleParticipants.length > 0 || screenShareInfo) {
+          if (visibleParticipants.length > 0 || screenShares.length > 0) {
             return (
               <div className={css.ParticipantGrid}>
-                {/* Show stream as a tile if someone is sharing */}
-                {screenShareInfo && (
+                {/* Show stream tiles for all active screen shares */}
+                {screenShares.map((share) => (
                   <ParticipantTile
-                    key={`stream-${screenShareInfo.participantIdentity}`}
+                    key={`stream-${share.participantIdentity}`}
                     participant={{
-                      identity: screenShareInfo.participantIdentity,
-                      name: screenShareInfo.participantName,
+                      identity: share.participantIdentity,
+                      name: share.participantName,
                       isSpeaking: false,
                       isMuted: false,
                       isLocal: false,
@@ -843,14 +840,14 @@ export function VoiceRoom() {
                       isScreenSharing: true,
                       volume: 1,
                     }}
-                    avatarUrl={profileCache[screenShareInfo.participantIdentity]?.avatarUrl}
-                    displayName={profileCache[screenShareInfo.participantIdentity]?.displayName || screenShareInfo.participantName}
+                    avatarUrl={profileCache[share.participantIdentity]?.avatarUrl}
+                    displayName={profileCache[share.participantIdentity]?.displayName || share.participantName}
                     isStreamTile
-                    streamVideoElement={streamVideoEl}
+                    streamVideoElement={getScreenShareElement(share.participantIdentity)}
                     tileWidth={tileDimensions.width}
                     tileHeight={tileDimensions.height}
                   />
-                )}
+                ))}
                 {/* Show regular participants */}
                 {visibleParticipants.map((p) => (
                   <ParticipantTile

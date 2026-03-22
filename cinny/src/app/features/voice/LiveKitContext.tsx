@@ -54,7 +54,8 @@ interface LiveKitContextValue {
   isMuted: boolean;
   isDeafened: boolean;
   isCameraEnabled: boolean;
-  screenShareInfo: ScreenShareInfo | null;
+  screenShareInfo: ScreenShareInfo | null; // First/primary screen share (backwards compat)
+  screenShares: ScreenShareInfo[]; // All active screen shares
   connectionQuality: ConnectionQuality | null;
   showVoiceView: boolean;
   participantVolumes: Record<string, number>;
@@ -64,7 +65,7 @@ interface LiveKitContextValue {
   toggleDeafen: () => void;
   toggleCamera: () => void;
   setShowVoiceView: (show: boolean) => void;
-  getScreenShareElement: () => HTMLVideoElement | null;
+  getScreenShareElement: (identity?: string) => HTMLVideoElement | null;
   getCameraElement: (identity: string) => HTMLVideoElement | null;
   setParticipantVolume: (identity: string, volume: number) => void;
   isNoiseFilterEnabled: boolean;
@@ -88,6 +89,8 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState(true);
   const [isDeafened, setIsDeafened] = useState(false);
   const [screenShareInfo, setScreenShareInfo] = useState<ScreenShareInfo | null>(null);
+  const [screenShares, setScreenShares] = useState<ScreenShareInfo[]>([]);
+  const screenSharesMapRef = useRef<Map<string, ScreenShareInfo>>(new Map());
   const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality | null>(null);
   const [showVoiceView, setShowVoiceView] = useState(false);
   const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
@@ -103,7 +106,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   const [microphoneTrack, setMicrophoneTrack] = useState<any>(null);
   const noiseFilter = useNoiseFilter(microphoneTrack);
   const audioContainerRef = useRef<HTMLDivElement | null>(null);
-  const screenShareVideoRef = useRef<HTMLVideoElement | null>(null);
+  const screenShareVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const cameraVideoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const diagnosticsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const volumesRef = useRef<Record<string, number>>({});
@@ -291,12 +294,18 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
           ? (participant.name?.replace(/ \(Stream\)$/, "") || displayIdentity)
           : (participant.name || participant.identity);
 
-        setScreenShareInfo({
+        const newShareInfo: ScreenShareInfo = {
           participantIdentity: participant.identity,
           participantName: displayName,
           track,
           audioTrack: null
-        });
+        };
+
+        // Add to map and update states
+        screenSharesMapRef.current.set(participant.identity, newShareInfo);
+        const sharesArray = Array.from(screenSharesMapRef.current.values());
+        setScreenShares(sharesArray);
+        setScreenShareInfo(sharesArray[0] || null); // First one for backwards compat
       } else if (track.source === Track.Source.Camera) {
         // Camera track from remote participant
         console.log("[LiveKit] Camera track subscribed from", participant.identity);
@@ -329,7 +338,12 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       const isScreenShare = track.source === Track.Source.ScreenShare ||
                            (isIngressStream && (track.source === Track.Source.Camera || track.source === Track.Source.Unknown));
       if (isScreenShare) {
-        setScreenShareInfo(null);
+        // Remove from map and update states
+        screenSharesMapRef.current.delete(participant.identity);
+        screenShareVideoRefs.current.delete(participant.identity);
+        const sharesArray = Array.from(screenSharesMapRef.current.values());
+        setScreenShares(sharesArray);
+        setScreenShareInfo(sharesArray[0] || null);
       } else if (track.source === Track.Source.Camera) {
         // Clean up camera video element
         console.log("[LiveKit] Camera track unsubscribed from", participant.identity);
@@ -471,7 +485,8 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       room.on(RoomEvent.LocalTrackUnpublished, updateParticipants);
       room.on(RoomEvent.Disconnected, (reason) => {
         console.log("[LiveKit DEBUG] Disconnected, reason:", reason);
-        setIsConnected(false); setCurrentRoom(null); setParticipants([]); setScreenShareInfo(null); setShowVoiceView(false);
+        screenSharesMapRef.current.clear(); screenShareVideoRefs.current.clear();
+        setIsConnected(false); setCurrentRoom(null); setParticipants([]); setScreenShareInfo(null); setScreenShares([]); setShowVoiceView(false);
       });
 
       const iceServers = data.iceServers && data.iceServers.length > 0
@@ -555,7 +570,11 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     // Clean up camera video elements
     cameraVideoRefs.current.forEach((el) => el.remove());
     cameraVideoRefs.current.clear();
-    setIsConnected(false); setCurrentRoom(null); setParticipants([]); setIsMuted(true); setIsDeafened(false); setIsCameraEnabled(false); setScreenShareInfo(null); setShowVoiceView(false);
+    // Clean up screen share video elements
+    screenShareVideoRefs.current.forEach((el) => el.remove());
+    screenShareVideoRefs.current.clear();
+    screenSharesMapRef.current.clear();
+    setIsConnected(false); setCurrentRoom(null); setParticipants([]); setIsMuted(true); setIsDeafened(false); setIsCameraEnabled(false); setScreenShareInfo(null); setScreenShares([]); setShowVoiceView(false);
   }, [stopDiagnostics, isNativeStreaming, currentIngressId]);
 
   const toggleMute = useCallback(async () => {
@@ -619,18 +638,28 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
     return cameraVideoRefs.current.get(identity) || null;
   }, []);
 
-  const getScreenShareElement = useCallback((): HTMLVideoElement | null => {
-    if (!screenShareInfo?.track) return null;
-    if (!screenShareVideoRef.current) {
-      screenShareVideoRef.current = document.createElement("video");
-      screenShareVideoRef.current.autoplay = true;
-      screenShareVideoRef.current.playsInline = true;
-      screenShareVideoRef.current.style.transform = "translateZ(0)";
+  const getScreenShareElement = useCallback((identity?: string): HTMLVideoElement | null => {
+    // If no identity provided, use the first/primary screen share
+    const targetIdentity = identity || screenShareInfo?.participantIdentity;
+    if (!targetIdentity) return null;
+
+    const shareInfo = screenSharesMapRef.current.get(targetIdentity);
+    if (!shareInfo?.track) return null;
+
+    // Get or create video element for this identity
+    let videoEl = screenShareVideoRefs.current.get(targetIdentity);
+    if (!videoEl) {
+      videoEl = document.createElement("video");
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.style.transform = "translateZ(0)";
+      screenShareVideoRefs.current.set(targetIdentity, videoEl);
     }
-    if (screenShareInfo.track.kind === Track.Kind.Video) {
-      (screenShareInfo.track as any).attach(screenShareVideoRef.current);
+
+    if (shareInfo.track.kind === Track.Kind.Video) {
+      (shareInfo.track as any).attach(videoEl);
     }
-    return screenShareVideoRef.current;
+    return videoEl;
   }, [screenShareInfo]);
 
   useEffect(() => {
@@ -691,6 +720,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
       isDeafened,
       isCameraEnabled,
       screenShareInfo,
+      screenShares,
       connectionQuality,
       showVoiceView,
       participantVolumes,
