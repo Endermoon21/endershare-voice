@@ -726,145 +726,19 @@ fn build_video_capture(config: &StreamConfig) -> String {
             config.width, config.height
         ));
 
-        // Queue for stability - use leaky=upstream to drop old frames, not new ones
-        video.push_str(" ! queue max-size-buffers=3 max-size-time=50000000 max-size-bytes=0 leaky=upstream");
+        // Queue for stability
+        video.push_str(" ! queue max-size-buffers=3 max-size-time=50000000 max-size-bytes=0 leaky=downstream");
 
-        // Download from GPU memory to system memory
+        // Download from GPU memory to system memory for whipclientsink
         video.push_str(" ! d3d11download");
 
-        // Encoder selection based on quality mode and available hardware
-        // WebRTC requires: Constrained Baseline profile, CABAC disabled, SPS/PPS with keyframes
-        let quality_mode = &config.quality_mode;
-        log_to_file(&format!("Quality mode: {:?}", quality_mode));
+        // Let whipclientsink handle ALL encoding with congestion control
+        // This enables automatic bitrate adaptation based on network conditions
+        // DO NOT add explicit encoders here - it breaks congestion control!
+        log_to_file(&format!("Quality mode: {:?} - letting whipclientsink handle encoding with congestion control", config.quality_mode));
 
-        // For Quality/Lossless modes, we always add explicit encoder for full control
-        // For Performance/Balanced with NVIDIA, let whipclientsink handle it
-        let use_explicit_nvidia = matches!(quality_mode, QualityMode::Quality | QualityMode::Lossless);
-        let has_nvidia = gst::ElementFactory::find("nvh264enc").is_some();
-
-        if has_nvidia && !use_explicit_nvidia {
-            log_to_file("NVIDIA encoder available, letting whipclientsink handle encoding");
-        } else if has_nvidia {
-            // Explicit NVIDIA encoding for quality modes
-            log_to_file("Using NVIDIA encoder (nvh264enc) with quality settings");
-            match quality_mode {
-                QualityMode::Quality => {
-                    // High quality VBR with low-latency preset + zerolatency for smooth streaming
-                    video.push_str(&format!(
-                        " ! nvh264enc preset=low-latency-hq zerolatency=true rc-mode=vbr bitrate={} max-bitrate={}",
-                        config.bitrate, config.bitrate * 2
-                    ));
-                }
-                QualityMode::Lossless => {
-                    // Visually lossless: CQP with low QP value
-                    // Use low-latency-hq + zerolatency for smooth real-time encoding
-                    video.push_str(
-                        " ! nvh264enc preset=low-latency-hq zerolatency=true rc-mode=constqp qp-const-i=18 qp-const-p=20"
-                    );
-                }
-                _ => unreachable!()
-            }
-            // Buffer after encoder - leaky=upstream drops old frames
-            video.push_str(" ! queue max-size-buffers=2 max-size-time=33000000 max-size-bytes=0 leaky=upstream");
-            video.push_str(" ! h264parse config-interval=-1");
-        } else if gst::ElementFactory::find("amfh264enc").is_some() {
-            // AMD AMF encoder with quality-based settings
-            log_to_file(&format!("Using AMD AMF encoder (amfh264enc) - {:?} mode", quality_mode));
-            match quality_mode {
-                QualityMode::Performance => {
-                    video.push_str(&format!(
-                        " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} cabac=false",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Balanced => {
-                    video.push_str(&format!(
-                        " ! amfh264enc usage=low-latency rate-control=vbr bitrate={} max-bitrate={} cabac=false",
-                        config.bitrate, config.bitrate * 3 / 2
-                    ));
-                }
-                QualityMode::Quality => {
-                    // Use low-latency for smooth real-time streaming
-                    video.push_str(&format!(
-                        " ! amfh264enc usage=low-latency rate-control=vbr bitrate={} max-bitrate={} cabac=false",
-                        config.bitrate, config.bitrate * 2
-                    ));
-                }
-                QualityMode::Lossless => {
-                    // Visually lossless: CQP mode with low QP (18-20)
-                    // Use low-latency for smooth real-time encoding
-                    video.push_str(
-                        " ! amfh264enc usage=low-latency rate-control=cqp qp-i=18 qp-p=20 cabac=false"
-                    );
-                }
-            }
-            // Buffer after encoder - leaky=upstream drops old frames
-            video.push_str(" ! queue max-size-buffers=2 max-size-time=33000000 max-size-bytes=0 leaky=upstream");
-            video.push_str(" ! h264parse config-interval=-1");
-        } else if gst::ElementFactory::find("qsvh264enc").is_some() {
-            // Intel QuickSync encoder
-            log_to_file(&format!("Using Intel QuickSync encoder (qsvh264enc) - {:?} mode", quality_mode));
-            match quality_mode {
-                QualityMode::Performance => {
-                    video.push_str(&format!(
-                        " ! qsvh264enc low-latency=true target-usage=7 bitrate={}",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Balanced => {
-                    video.push_str(&format!(
-                        " ! qsvh264enc low-latency=true target-usage=4 bitrate={}",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Quality | QualityMode::Lossless => {
-                    // QSV uses ICQ (Intelligent Constant Quality) for quality mode
-                    // Lower ICQ = higher quality (1-51 scale)
-                    let icq = if *quality_mode == QualityMode::Lossless { 18 } else { 22 };
-                    video.push_str(&format!(
-                        " ! qsvh264enc target-usage=1 rate-control=icq icq-quality={}",
-                        icq
-                    ));
-                }
-            }
-            // Buffer after encoder - leaky=upstream drops old frames
-            video.push_str(" ! queue max-size-buffers=2 max-size-time=33000000 max-size-bytes=0 leaky=upstream");
-            video.push_str(" ! h264parse config-interval=-1");
-        } else if gst::ElementFactory::find("x264enc").is_some() {
-            // Software fallback with quality options
-            log_to_file(&format!("Using software encoder (x264enc) - {:?} mode", quality_mode));
-            match quality_mode {
-                QualityMode::Performance => {
-                    video.push_str(&format!(
-                        " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max=60",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Balanced => {
-                    video.push_str(&format!(
-                        " ! x264enc tune=zerolatency speed-preset=fast bitrate={} key-int-max=60",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Quality => {
-                    video.push_str(&format!(
-                        " ! x264enc tune=zerolatency speed-preset=medium bitrate={} key-int-max=60",
-                        config.bitrate
-                    ));
-                }
-                QualityMode::Lossless => {
-                    // x264 CRF mode - quantizer=18 is visually lossless
-                    video.push_str(
-                        " ! x264enc tune=zerolatency speed-preset=medium pass=quant quantizer=18 key-int-max=60"
-                    );
-                }
-            }
-            // Buffer after encoder - leaky=upstream drops old frames
-            video.push_str(" ! queue max-size-buffers=2 max-size-time=33000000 max-size-bytes=0 leaky=upstream");
-            video.push_str(" ! h264parse config-interval=-1");
-        } else {
-            log_to_file("WARNING: No H.264 encoder found! Stream may fail.");
-        }
+        // Output raw video - whipclientsink will encode internally
+        // No explicit encoder needed here - congestion control handles bitrate
     }
 
     #[cfg(target_os = "linux")]
@@ -937,19 +811,48 @@ fn build_audio_capture() -> String {
 
 /// Build GStreamer pipeline string for WHIP streaming
 fn build_gstreamer_pipeline(config: &StreamConfig) -> String {
+    // Calculate bitrates based on quality mode
+    // whipclientsink handles encoding internally with congestion control
+    let (start_bitrate, min_bitrate, max_bitrate) = match config.quality_mode {
+        QualityMode::Performance => {
+            // Lower bitrate, prioritize smoothness
+            (config.bitrate * 1000, 500_000, config.bitrate * 1000 * 3 / 2)
+        }
+        QualityMode::Balanced => {
+            // Balanced bitrate with room to adapt
+            (config.bitrate * 1000, 1_000_000, config.bitrate * 1000 * 2)
+        }
+        QualityMode::Quality => {
+            // Higher bitrate, more headroom
+            (config.bitrate * 1000, 2_000_000, config.bitrate * 1000 * 3)
+        }
+        QualityMode::Lossless => {
+            // Maximum bitrate for best quality
+            // Note: True lossless not possible over WebRTC, this is "visually lossless"
+            (config.bitrate * 1000 * 2, 5_000_000, config.bitrate * 1000 * 4)
+        }
+    };
+
+    log_to_file(&format!(
+        "Bitrate settings - start: {} kbps, min: {} kbps, max: {} kbps",
+        start_bitrate / 1000, min_bitrate / 1000, max_bitrate / 1000
+    ));
+
     // Build WHIP sink properties
     // video-caps tells whipclientsink what codec to use for internal encoding
+    // Congestion control will adapt bitrate between min and max based on network
     let mut whip_props = format!(
         "whipclientsink name=whip \
 video-caps=\"video/x-h264,profile=constrained-baseline\" \
 start-bitrate={} \
-min-bitrate=500000 \
+min-bitrate={} \
 max-bitrate={} \
 do-fec=true \
 do-retransmission=true \
 signaller::whip-endpoint=\"{}\"",
-        config.bitrate * 1000,
-        config.bitrate * 1000 * 2,
+        start_bitrate,
+        min_bitrate,
+        max_bitrate,
         config.whip_url
     );
 
