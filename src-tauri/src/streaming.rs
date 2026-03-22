@@ -27,6 +27,22 @@ pub struct CaptureSource {
     pub thumbnail: Option<String>, // Base64-encoded JPEG thumbnail
 }
 
+/// Quality mode for streaming
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum QualityMode {
+    Performance,  // Lowest latency, fast encoding
+    Balanced,     // Good quality with reasonable latency
+    Quality,      // High quality, more latency
+    Lossless,     // Visually lossless (CQP mode, very high bitrate)
+}
+
+impl Default for QualityMode {
+    fn default() -> Self {
+        QualityMode::Balanced
+    }
+}
+
 /// Stream configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamConfig {
@@ -39,6 +55,8 @@ pub struct StreamConfig {
     pub audio_enabled: bool,
     pub bearer_token: Option<String>,
     pub turn_server: Option<String>,
+    #[serde(default)]
+    pub quality_mode: QualityMode,
 }
 
 /// Stream status
@@ -714,46 +732,129 @@ fn build_video_capture(config: &StreamConfig) -> String {
         // Download from GPU memory to system memory
         video.push_str(" ! d3d11download");
 
-        // NVIDIA: whipclientsink auto-detects nvh264enc internally, no explicit encoder needed
-        // AMD/Intel/Software: whipclientsink can't find encoder, must add explicitly
+        // Encoder selection based on quality mode and available hardware
         // WebRTC requires: Constrained Baseline profile, CABAC disabled, SPS/PPS with keyframes
-        if gst::ElementFactory::find("nvh264enc").is_none() {
-            log_to_file("No NVIDIA encoder found, adding explicit H.264 encoder for WebRTC");
+        let quality_mode = &config.quality_mode;
+        log_to_file(&format!("Quality mode: {:?}", quality_mode));
 
-            // Try AMD AMF encoder
-            // cabac=false required for Constrained Baseline (WebRTC compatibility)
-            // config-interval=-1 sends SPS/PPS with every IDR frame
-            if gst::ElementFactory::find("amfh264enc").is_some() {
-                log_to_file("Using AMD AMF encoder (amfh264enc) with WebRTC settings");
-                video.push_str(&format!(
-                    " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} cabac=false",
-                    config.bitrate
-                ));
-                video.push_str(" ! h264parse config-interval=-1");
-            }
-            // Try Intel QuickSync
-            else if gst::ElementFactory::find("qsvh264enc").is_some() {
-                log_to_file("Using Intel QuickSync encoder (qsvh264enc) with WebRTC settings");
-                video.push_str(&format!(
-                    " ! qsvh264enc low-latency=true bitrate={}",
-                    config.bitrate
-                ));
-                video.push_str(" ! h264parse config-interval=-1");
-            }
-            // Software fallback
-            else if gst::ElementFactory::find("x264enc").is_some() {
-                log_to_file("Using software encoder (x264enc) with WebRTC settings");
-                video.push_str(&format!(
-                    " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max=60",
-                    config.bitrate
-                ));
-                video.push_str(" ! h264parse config-interval=-1");
-            }
-            else {
-                log_to_file("WARNING: No H.264 encoder found! Stream may fail.");
-            }
-        } else {
+        // For Quality/Lossless modes, we always add explicit encoder for full control
+        // For Performance/Balanced with NVIDIA, let whipclientsink handle it
+        let use_explicit_nvidia = matches!(quality_mode, QualityMode::Quality | QualityMode::Lossless);
+        let has_nvidia = gst::ElementFactory::find("nvh264enc").is_some();
+
+        if has_nvidia && !use_explicit_nvidia {
             log_to_file("NVIDIA encoder available, letting whipclientsink handle encoding");
+        } else if has_nvidia {
+            // Explicit NVIDIA encoding for quality modes
+            log_to_file("Using NVIDIA encoder (nvh264enc) with quality settings");
+            match quality_mode {
+                QualityMode::Quality => {
+                    // High quality VBR
+                    video.push_str(&format!(
+                        " ! nvh264enc preset=hq rc-mode=vbr bitrate={} max-bitrate={}",
+                        config.bitrate, config.bitrate * 2
+                    ));
+                }
+                QualityMode::Lossless => {
+                    // Visually lossless: CQP with low QP value
+                    // QP 18-20 is considered visually lossless
+                    video.push_str(
+                        " ! nvh264enc preset=hq rc-mode=cqp qp-const=18 qp-min=15 qp-max=23"
+                    );
+                }
+                _ => unreachable!()
+            }
+            video.push_str(" ! h264parse config-interval=-1");
+        } else if gst::ElementFactory::find("amfh264enc").is_some() {
+            // AMD AMF encoder with quality-based settings
+            log_to_file(&format!("Using AMD AMF encoder (amfh264enc) - {:?} mode", quality_mode));
+            match quality_mode {
+                QualityMode::Performance => {
+                    video.push_str(&format!(
+                        " ! amfh264enc usage=ultra-low-latency rate-control=cbr bitrate={} cabac=false",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Balanced => {
+                    video.push_str(&format!(
+                        " ! amfh264enc usage=low-latency rate-control=vbr bitrate={} max-bitrate={} cabac=false",
+                        config.bitrate, config.bitrate * 3 / 2
+                    ));
+                }
+                QualityMode::Quality => {
+                    video.push_str(&format!(
+                        " ! amfh264enc usage=transcoding rate-control=vbr bitrate={} max-bitrate={} cabac=false",
+                        config.bitrate, config.bitrate * 2
+                    ));
+                }
+                QualityMode::Lossless => {
+                    // Visually lossless: CQP mode with low QP (18-20)
+                    // Higher bitrate ensures quality even with rate control
+                    video.push_str(
+                        " ! amfh264enc usage=transcoding rate-control=cqp qp-i=18 qp-p=20 cabac=false"
+                    );
+                }
+            }
+            video.push_str(" ! h264parse config-interval=-1");
+        } else if gst::ElementFactory::find("qsvh264enc").is_some() {
+            // Intel QuickSync encoder
+            log_to_file(&format!("Using Intel QuickSync encoder (qsvh264enc) - {:?} mode", quality_mode));
+            match quality_mode {
+                QualityMode::Performance => {
+                    video.push_str(&format!(
+                        " ! qsvh264enc low-latency=true target-usage=7 bitrate={}",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Balanced => {
+                    video.push_str(&format!(
+                        " ! qsvh264enc low-latency=true target-usage=4 bitrate={}",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Quality | QualityMode::Lossless => {
+                    // QSV uses ICQ (Intelligent Constant Quality) for quality mode
+                    // Lower ICQ = higher quality (1-51 scale)
+                    let icq = if *quality_mode == QualityMode::Lossless { 18 } else { 22 };
+                    video.push_str(&format!(
+                        " ! qsvh264enc target-usage=1 rate-control=icq icq-quality={}",
+                        icq
+                    ));
+                }
+            }
+            video.push_str(" ! h264parse config-interval=-1");
+        } else if gst::ElementFactory::find("x264enc").is_some() {
+            // Software fallback with quality options
+            log_to_file(&format!("Using software encoder (x264enc) - {:?} mode", quality_mode));
+            match quality_mode {
+                QualityMode::Performance => {
+                    video.push_str(&format!(
+                        " ! x264enc tune=zerolatency speed-preset=ultrafast bitrate={} key-int-max=60",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Balanced => {
+                    video.push_str(&format!(
+                        " ! x264enc tune=zerolatency speed-preset=fast bitrate={} key-int-max=60",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Quality => {
+                    video.push_str(&format!(
+                        " ! x264enc tune=zerolatency speed-preset=medium bitrate={} key-int-max=60",
+                        config.bitrate
+                    ));
+                }
+                QualityMode::Lossless => {
+                    // x264 CRF mode - quantizer=18 is visually lossless
+                    video.push_str(
+                        " ! x264enc tune=zerolatency speed-preset=medium pass=quant quantizer=18 key-int-max=60"
+                    );
+                }
+            }
+            video.push_str(" ! h264parse config-interval=-1");
+        } else {
+            log_to_file("WARNING: No H.264 encoder found! Stream may fail.");
         }
     }
 

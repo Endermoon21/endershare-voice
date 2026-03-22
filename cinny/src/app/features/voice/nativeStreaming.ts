@@ -32,6 +32,9 @@ export interface NativeCaptureSource {
   thumbnail: string | null; // Base64-encoded JPEG thumbnail (data:image/jpeg;base64,...)
 }
 
+/** Quality mode for streaming */
+export type QualityMode = 'performance' | 'balanced' | 'quality' | 'lossless';
+
 /** Stream configuration */
 export interface NativeStreamConfig {
   source_id: string;
@@ -46,6 +49,7 @@ export interface NativeStreamConfig {
   bearer_token?: string;
   backend: StreamBackend;
   turn_server?: string; // For GStreamer TURN support (e.g., "turn://user:pass@host:port")
+  quality_mode?: QualityMode; // Quality mode: performance, balanced, quality, lossless
 }
 
 /** Stream status */

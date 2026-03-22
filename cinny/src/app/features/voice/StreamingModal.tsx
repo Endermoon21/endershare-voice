@@ -132,8 +132,8 @@ const AudioIcon = () => (
   </svg>
 );
 
-// Quality presets - simplified
-type QualityPreset = "720p" | "1080p" | "1080p+";
+// Quality presets - with quality mode support
+type QualityPreset = "720p" | "1080p" | "1080p+" | "lossless";
 
 interface PresetConfig {
   label: string;
@@ -142,6 +142,7 @@ interface PresetConfig {
   height: number;
   fps: number;
   bitrate: number;
+  quality_mode: 'performance' | 'balanced' | 'quality' | 'lossless';
 }
 
 const QUALITY_PRESETS: Record<QualityPreset, PresetConfig> = {
@@ -152,6 +153,7 @@ const QUALITY_PRESETS: Record<QualityPreset, PresetConfig> = {
     height: 720,
     fps: 30,
     bitrate: 3000,
+    quality_mode: 'performance',
   },
   "1080p": {
     label: "1080p 60fps",
@@ -160,6 +162,7 @@ const QUALITY_PRESETS: Record<QualityPreset, PresetConfig> = {
     height: 1080,
     fps: 60,
     bitrate: 6000,
+    quality_mode: 'balanced',
   },
   "1080p+": {
     label: "1080p 60fps HQ",
@@ -167,7 +170,17 @@ const QUALITY_PRESETS: Record<QualityPreset, PresetConfig> = {
     width: 1920,
     height: 1080,
     fps: 60,
-    bitrate: 10000,
+    bitrate: 15000,
+    quality_mode: 'quality',
+  },
+  "lossless": {
+    label: "1080p 60fps Lossless",
+    short: "Lossless",
+    width: 1920,
+    height: 1080,
+    fps: 60,
+    bitrate: 30000, // High bitrate for CQP fallback scenarios
+    quality_mode: 'lossless',
   },
 };
 
@@ -374,6 +387,7 @@ export function StreamingModal({ onClose }: StreamingModalProps) {
         bearer_token: ingress.streamKey,
         backend: 'gstreamer',
         turn_server: turnServer,
+        quality_mode: settings.quality_mode,
       };
 
       await startNativeStream(config);
