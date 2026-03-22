@@ -726,8 +726,8 @@ fn build_video_capture(config: &StreamConfig) -> String {
             config.width, config.height
         ));
 
-        // Queue for stability - larger buffer prevents frame drops at high quality
-        video.push_str(" ! queue max-size-buffers=5 max-size-time=100000000 max-size-bytes=0 leaky=downstream");
+        // Queue for stability - larger buffer, no frame dropping
+        video.push_str(" ! queue max-size-buffers=10 max-size-time=200000000 max-size-bytes=0");
 
         // Download from GPU memory to system memory
         video.push_str(" ! d3d11download");
@@ -749,18 +749,17 @@ fn build_video_capture(config: &StreamConfig) -> String {
             log_to_file("Using NVIDIA encoder (nvh264enc) with quality settings");
             match quality_mode {
                 QualityMode::Quality => {
-                    // High quality VBR
+                    // High quality VBR with low-latency preset + zerolatency for smooth streaming
                     video.push_str(&format!(
-                        " ! nvh264enc preset=hq rc-mode=vbr bitrate={} max-bitrate={}",
+                        " ! nvh264enc preset=low-latency-hq zerolatency=true rc-mode=vbr bitrate={} max-bitrate={}",
                         config.bitrate, config.bitrate * 2
                     ));
                 }
                 QualityMode::Lossless => {
                     // Visually lossless: CQP with low QP value
-                    // QP 18-20 is considered visually lossless
-                    // NVIDIA uses rc-mode=constqp and qp-const-i/qp-const-p properties
+                    // Use low-latency-hq + zerolatency for smooth real-time encoding
                     video.push_str(
-                        " ! nvh264enc preset=hq rc-mode=constqp qp-const-i=18 qp-const-p=20"
+                        " ! nvh264enc preset=low-latency-hq zerolatency=true rc-mode=constqp qp-const-i=18 qp-const-p=20"
                     );
                 }
                 _ => unreachable!()
@@ -785,16 +784,17 @@ fn build_video_capture(config: &StreamConfig) -> String {
                     ));
                 }
                 QualityMode::Quality => {
+                    // Use low-latency for smooth real-time streaming
                     video.push_str(&format!(
-                        " ! amfh264enc usage=transcoding rate-control=vbr bitrate={} max-bitrate={} cabac=false",
+                        " ! amfh264enc usage=low-latency rate-control=vbr bitrate={} max-bitrate={} cabac=false",
                         config.bitrate, config.bitrate * 2
                     ));
                 }
                 QualityMode::Lossless => {
                     // Visually lossless: CQP mode with low QP (18-20)
-                    // Higher bitrate ensures quality even with rate control
+                    // Use low-latency for smooth real-time encoding
                     video.push_str(
-                        " ! amfh264enc usage=transcoding rate-control=cqp qp-i=18 qp-p=20 cabac=false"
+                        " ! amfh264enc usage=low-latency rate-control=cqp qp-i=18 qp-p=20 cabac=false"
                     );
                 }
             }
