@@ -1,6 +1,6 @@
 [package]
 name = "cinny-min"
-version = "4.12.114"
+version = "4.12.115"
 description = "Matrix client with voice channels and game streaming"
 authors = ["endershare.org"]
 license = "AGPL-3.0-only"
@@ -33,6 +33,8 @@ gstreamer = "0.23"
 reqwest = { version = "0.11", features = ["json", "multipart", "stream"] }
 urlencoding = "2.1"
 base64 = "0.22"
+tokio-util = "0.7"
+futures = "0.3"
 
 # Image processing for thumbnails
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }

@@ -138,6 +138,8 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         // Register streaming state
         .manage(streaming::StreamingState::default())
+        // Register upload state for cancellation tracking
+        .manage(upload::UploadState::new())
         // Register streaming and upload commands
         .invoke_handler(tauri::generate_handler![
             streaming::list_capture_sources,
@@ -149,6 +151,7 @@ fn main() {
             streaming::check_gstreamer,
             upload::native_upload_file,
             upload::cancel_native_upload,
+            upload::get_active_uploads,
         ])
         .run(context)
         .expect("error while building tauri application")

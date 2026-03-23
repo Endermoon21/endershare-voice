@@ -1,8 +1,11 @@
 /**
  * Native file upload for Tauri
  *
- * Bypasses WebView CORS issues by uploading through Rust's reqwest.
- * Falls back to standard Matrix SDK upload in browser.
+ * Features:
+ * - Bypasses WebView CORS restrictions
+ * - Real-time progress tracking
+ * - Cancellation support
+ * - Automatic retry with exponential backoff
  */
 
 import { invoke } from '@tauri-apps/api/tauri';
@@ -64,41 +67,39 @@ function getMimeType(fileName: string, detectedType: string): string {
   return (ext && MIME_TYPES[ext]) || 'application/octet-stream';
 }
 
+export type UploadStatus = 'uploading' | 'retrying' | 'cancelled' | 'complete' | 'error';
+
 export interface NativeUploadProgress {
   id: string;
   loaded: number;
   total: number;
+  status: UploadStatus;
 }
 
 export interface NativeUploadResult {
   content_uri: string;
 }
 
+export interface UploadOptions {
+  onProgress?: (progress: NativeUploadProgress) => void;
+  onRetry?: (attempt: number) => void;
+  onStatusChange?: (status: UploadStatus) => void;
+}
+
+// Track active upload IDs for cancellation
+const activeUploads = new Map<string, { file: File | Blob; controller: AbortController }>();
+
 /**
- * Upload a file using Tauri's native HTTP client
- *
- * This bypasses WebView CORS restrictions that can cause uploads to hang.
- *
- * @param file - The file to upload
- * @param homeserver - Matrix homeserver URL (e.g., "https://matrix.endershare.org")
- * @param accessToken - User's Matrix access token
- * @param onProgress - Optional progress callback
- * @returns Promise resolving to the mxc:// content URI
+ * Generate a unique upload ID
  */
-export async function nativeUploadFile(
-  file: File | Blob,
-  homeserver: string,
-  accessToken: string,
-  onProgress?: (progress: NativeUploadProgress) => void
-): Promise<string> {
-  if (!isTauri) {
-    throw new Error('Native upload is only available in Tauri');
-  }
+function generateUploadId(): string {
+  return `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
 
-  // Generate unique upload ID for tracking
-  const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  // Convert file to base64 using efficient Uint8Array method
+/**
+ * Convert file to base64 using efficient chunked approach
+ */
+async function fileToBase64(file: File | Blob): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
 
@@ -109,18 +110,81 @@ export async function nativeUploadFile(
     const chunk = bytes.subarray(i, i + chunkSize);
     chunks.push(String.fromCharCode.apply(null, chunk as unknown as number[]));
   }
-  const fileDataBase64 = btoa(chunks.join(''));
+  return btoa(chunks.join(''));
+}
 
-  // Get file name and type (with fallback MIME detection)
+/**
+ * Upload a file using Tauri's native HTTP client
+ *
+ * Features:
+ * - Bypasses WebView CORS restrictions
+ * - Real-time progress tracking
+ * - Automatic retry with exponential backoff
+ * - Cancellation support
+ *
+ * @param file - The file to upload
+ * @param homeserver - Matrix homeserver URL
+ * @param accessToken - User's Matrix access token
+ * @param options - Upload options (progress, retry, status callbacks)
+ * @returns Promise resolving to the mxc:// content URI
+ */
+export async function nativeUploadFile(
+  file: File | Blob,
+  homeserver: string,
+  accessToken: string,
+  options: UploadOptions = {}
+): Promise<string> {
+  if (!isTauri) {
+    throw new Error('Native upload is only available in Tauri');
+  }
+
+  const { onProgress, onRetry, onStatusChange } = options;
+
+  // Generate unique upload ID
+  const uploadId = generateUploadId();
+  const controller = new AbortController();
+
+  // Track this upload
+  activeUploads.set(uploadId, { file, controller });
+
+  // Convert file to base64
+  const fileDataBase64 = await fileToBase64(file);
+
+  // Get file name and type
   const fileName = file instanceof File ? file.name : 'blob';
   const contentType = getMimeType(fileName, file.type);
 
   // Set up progress listener
   let unlisten: UnlistenFn | undefined;
-  if (onProgress) {
+  let lastStatus: UploadStatus = 'uploading';
+  let retryCount = 0;
+
+  if (onProgress || onStatusChange || onRetry) {
     unlisten = await listen<NativeUploadProgress>('native-upload-progress', (event) => {
       if (event.payload.id === uploadId) {
-        onProgress(event.payload);
+        const progress = event.payload;
+
+        // Call progress callback
+        if (onProgress) {
+          onProgress(progress);
+        }
+
+        // Track status changes
+        if (progress.status !== lastStatus) {
+          lastStatus = progress.status;
+
+          if (onStatusChange) {
+            onStatusChange(progress.status);
+          }
+
+          // Track retry attempts
+          if (progress.status === 'retrying') {
+            retryCount++;
+            if (onRetry) {
+              onRetry(retryCount);
+            }
+          }
+        }
       }
     });
   }
@@ -138,7 +202,8 @@ export async function nativeUploadFile(
 
     return result.content_uri;
   } finally {
-    // Clean up progress listener
+    // Clean up
+    activeUploads.delete(uploadId);
     if (unlisten) {
       unlisten();
     }
@@ -147,9 +212,47 @@ export async function nativeUploadFile(
 
 /**
  * Cancel an active native upload
+ *
+ * @param uploadId - The upload ID to cancel (optional, cancels all if not provided)
  */
-export async function cancelNativeUpload(uploadId: string): Promise<void> {
+export async function cancelNativeUpload(uploadId?: string): Promise<void> {
   if (!isTauri) return;
 
-  await invoke('cancel_native_upload', { uploadId });
+  if (uploadId) {
+    // Cancel specific upload
+    await invoke('cancel_native_upload', { uploadId });
+    activeUploads.delete(uploadId);
+  } else {
+    // Cancel all active uploads
+    const ids = await getActiveUploads();
+    for (const id of ids) {
+      await invoke('cancel_native_upload', { uploadId: id });
+    }
+    activeUploads.clear();
+  }
 }
+
+/**
+ * Get list of active upload IDs
+ */
+export async function getActiveUploads(): Promise<string[]> {
+  if (!isTauri) return [];
+  return invoke<string[]>('get_active_uploads');
+}
+
+/**
+ * Check if there are any active uploads
+ */
+export function hasActiveUploads(): boolean {
+  return activeUploads.size > 0;
+}
+
+/**
+ * Get count of active uploads
+ */
+export function getActiveUploadCount(): number {
+  return activeUploads.size;
+}
+
+// Legacy export for backwards compatibility
+export { nativeUploadFile as default };

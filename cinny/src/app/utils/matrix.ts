@@ -180,9 +180,17 @@ export const uploadContent = async (
         file,
         homeserver,
         accessToken,
-        onProgress ? (progress) => {
-          onProgress({ loaded: progress.loaded, total: progress.total });
-        } : undefined
+        {
+          onProgress: onProgress ? (progress) => {
+            onProgress({ loaded: progress.loaded, total: progress.total });
+          } : undefined,
+          onRetry: (attempt) => {
+            console.log(`[Native Upload] Retry attempt ${attempt}`);
+          },
+          onStatusChange: (status) => {
+            console.log(`[Native Upload] Status: ${status}`);
+          },
+        }
       );
 
       console.log('[Native Upload] Success:', mxc);
@@ -193,7 +201,12 @@ export const uploadContent = async (
       // In Tauri, don't fall back to SDK - it will also fail due to CORS
       console.error('[Native Upload] Failed:', e);
       const errorMsg = e?.message || e?.toString() || 'Native upload failed';
-      onError(new MatrixError({ error: errorMsg, errcode: 'M_UNKNOWN' }));
+      // Check if it was cancelled
+      if (errorMsg.includes('cancelled')) {
+        onError(new MatrixError({ error: 'Upload cancelled', errcode: 'M_CANCELLED' }));
+      } else {
+        onError(new MatrixError({ error: errorMsg, errcode: 'M_UNKNOWN' }));
+      }
       return;
     }
   }
