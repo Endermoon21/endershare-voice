@@ -1,12 +1,6 @@
 import { style, keyframes } from '@vanilla-extract/css';
 import { config } from 'folds';
 
-// Subtle pulse animation for presence badge
-const presencePulse = keyframes({
-  '0%, 100%': { transform: 'translate(25%, 25%) scale(1)' },
-  '50%': { transform: 'translate(25%, 25%) scale(1.1)' },
-});
-
 // Fade-in animation when presence badge appears
 const presenceFadeIn = keyframes({
   '0%': { opacity: 0, transform: 'translate(25%, 25%) scale(0.5)' },
