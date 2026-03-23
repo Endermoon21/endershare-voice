@@ -1,11 +1,45 @@
-experiment
-dist
-node_modules
-devAssets
+# Dependencies
+node_modules/
+dist/
 
+# Build artifacts
+experiment/
+devAssets/
+src-tauri/target/
+*.exe
+*.msi
+*.AppImage
+*.dmg
+
+# IDE
 .DS_Store
-src-tauri/binaries/ffmpeg-*
+.idea/
+.vscode/
+*.swp
+*.swo
 
-# Cinny build artifacts
-cinny/node_modules
-cinny/dist
+# Environment and secrets
+.env
+.env.*
+cred.txt
+*.key
+*.pem
+
+# GStreamer binaries (copied during build)
+src-tauri/binaries/ffmpeg-*
+src-tauri/*.dll
+src-tauri/gstreamer/
+
+# Tauri
+src-tauri/WixTools/
+
+# Cinny submodule build
+cinny/node_modules/
+cinny/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Research/temp files
+DISCORD_VOICE_UI_RESEARCH.md

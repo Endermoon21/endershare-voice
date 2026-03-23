@@ -1,22 +1,35 @@
-<!-- Please read https://github.com/cinnyapp/cinny/blob/dev/CONTRIBUTING.md before submitting your pull request -->
+## Description
 
-### Description
-<!-- Please include a summary of the change. Please also include relevant motivation and context. List any dependencies that are required for this change. -->
-
+<!-- Brief summary of your changes -->
 
 Fixes #
 
-#### Type of change
+## Type of Change
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
 
-### Checklist:
+## Changes Made
 
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
+<!-- List the main changes -->
+
+-
+-
+-
+
+## Testing
+
+<!-- How did you test these changes? -->
+
+- [ ] Tested locally
+- [ ] Tested voice channels
+- [ ] Tested game streaming
+- [ ] N/A
+
+## Checklist
+
+- [ ] Code follows project style
+- [ ] Self-reviewed the changes
+- [ ] No new warnings

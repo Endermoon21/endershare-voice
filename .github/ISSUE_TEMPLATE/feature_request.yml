@@ -1,34 +1,48 @@
-name: 💡 Feature Request
-description: Suggest an idea
-labels: 'type: feature'
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ['enhancement']
 
 body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      description: Which part of the app would this affect?
+      options:
+        - Voice Channels
+        - Game Streaming
+        - Matrix Chat
+        - UI / Interface
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: problem
     attributes:
-      label: Describe the problem
-      description: A clear description of the problem this feature would solve
-      placeholder: "I'm always frustrated when..."
+      label: Problem or Use Case
+      description: What problem would this solve?
+      placeholder: "I want to be able to..."
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: "Describe the solution you'd like"
-      description: A clear description of what change you would like
-      placeholder: "I would like to..."
+      label: Proposed Solution
+      description: How would you like this to work?
+      placeholder: "It would be great if..."
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: "Any alternative solutions you've considered"
+      label: Alternatives Considered
+      description: Any workarounds or alternative solutions you've thought of
 
   - type: textarea
     id: context
     attributes:
-      label: Additional context
-      description: Add any other context about the problem here.
+      label: Additional Context
+      description: Screenshots, mockups, or other relevant info

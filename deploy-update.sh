@@ -12,7 +12,7 @@ DOCKER_PASS="lancache123"
 VOLTA_BUILD_PATH="C:/Users/VOLTA/cinny-desktop/src-tauri/target/release/bundle/msi"
 UPDATE_SERVER_PATH="/opt/cinny-downloads"
 TAURI_KEY_PATH="/opt/cinny-keys/tauri.key"
-GITHUB_REPO="Endermoon21/endershare-voice"
+GITHUB_REPO="Endermoon21/cinny-min"
 
 # Colors
 RED='\033[0;31m'
