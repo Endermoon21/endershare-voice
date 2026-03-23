@@ -2,23 +2,21 @@
 //!
 //! Features:
 //! - Bypasses WebView CORS issues by uploading directly from Rust
-//! - Real-time progress tracking with streaming body
-//! - Cancellation support via CancellationToken
+//! - Progress tracking
+//! - Cancellation support via AtomicBool
 //! - Automatic retry with exponential backoff
 //! - Configurable timeouts
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use futures_util::stream::{self, StreamExt};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use reqwest::Body;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Manager, State, Window};
-use tokio::sync::{Mutex, RwLock};
+use tauri::{State, Window};
+use tokio::sync::RwLock;
 use tokio::time::sleep;
-use tokio_util::sync::CancellationToken;
 
 /// Upload progress event payload
 #[derive(Clone, Serialize)]
@@ -61,8 +59,6 @@ pub struct UploadConfig {
     pub initial_retry_delay_ms: u64,
     /// Request timeout in seconds
     pub timeout_secs: u64,
-    /// Chunk size for progress reporting (bytes)
-    pub progress_chunk_size: usize,
 }
 
 impl Default for UploadConfig {
@@ -71,22 +67,26 @@ impl Default for UploadConfig {
             max_retries: 3,
             initial_retry_delay_ms: 1000,
             timeout_secs: 300, // 5 minutes for large files
-            progress_chunk_size: 65536, // 64KB chunks for progress
         }
     }
 }
 
 /// Active upload tracking
 struct ActiveUpload {
-    cancel_token: CancellationToken,
+    cancelled: Arc<AtomicBool>,
     file_name: String,
 }
 
 /// State for tracking active uploads - managed by Tauri
-#[derive(Default)]
 pub struct UploadState {
     active_uploads: RwLock<HashMap<String, ActiveUpload>>,
     config: UploadConfig,
+}
+
+impl Default for UploadState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl UploadState {
@@ -124,14 +124,14 @@ pub async fn native_upload_file(
         content_type
     );
 
-    // Create cancellation token and register upload
-    let cancel_token = CancellationToken::new();
+    // Create cancellation flag and register upload
+    let cancelled = Arc::new(AtomicBool::new(false));
     {
         let mut uploads = state.active_uploads.write().await;
         uploads.insert(
             upload_id.clone(),
             ActiveUpload {
-                cancel_token: cancel_token.clone(),
+                cancelled: cancelled.clone(),
                 file_name: file_name.clone(),
             },
         );
@@ -180,7 +180,7 @@ pub async fn native_upload_file(
 
     for attempt in 0..=config.max_retries {
         // Check for cancellation before each attempt
-        if cancel_token.is_cancelled() {
+        if cancelled.load(Ordering::SeqCst) {
             cleanup_upload(&state, &upload_id).await;
             emit_progress(&window, &upload_id, 0, total_size, UploadStatus::Cancelled);
             return Err("Upload cancelled".to_string());
@@ -197,64 +197,30 @@ pub async fn native_upload_file(
             );
             emit_progress(&window, &upload_id, 0, total_size, UploadStatus::Retrying);
 
-            // Wait with cancellation check
-            tokio::select! {
-                _ = sleep(Duration::from_millis(delay)) => {}
-                _ = cancel_token.cancelled() => {
+            // Wait with periodic cancellation check
+            let delay_duration = Duration::from_millis(delay);
+            let check_interval = Duration::from_millis(100);
+            let mut elapsed = Duration::ZERO;
+
+            while elapsed < delay_duration {
+                if cancelled.load(Ordering::SeqCst) {
                     cleanup_upload(&state, &upload_id).await;
                     emit_progress(&window, &upload_id, 0, total_size, UploadStatus::Cancelled);
                     return Err("Upload cancelled".to_string());
                 }
+                sleep(check_interval).await;
+                elapsed += check_interval;
             }
         }
 
-        // Create streaming body with progress tracking
-        let progress_state = Arc::new(Mutex::new(0u64));
-        let window_clone = window.clone();
-        let upload_id_clone = upload_id.clone();
-        let cancel_token_clone = cancel_token.clone();
-        let chunk_size = config.progress_chunk_size;
-
-        // Split data into chunks for progress tracking
-        let chunks: Vec<Vec<u8>> = file_data
-            .chunks(chunk_size)
-            .map(|c| c.to_vec())
-            .collect();
-
-        let stream = stream::iter(chunks.into_iter().map(move |chunk| {
-            let progress_state = progress_state.clone();
-            let window = window_clone.clone();
-            let upload_id = upload_id_clone.clone();
-            let cancel_token = cancel_token_clone.clone();
-            let chunk_len = chunk.len() as u64;
-
-            async move {
-                // Check cancellation
-                if cancel_token.is_cancelled() {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Interrupted,
-                        "Upload cancelled",
-                    ));
-                }
-
-                // Update progress
-                let mut loaded = progress_state.lock().await;
-                *loaded += chunk_len;
-                emit_progress(&window, &upload_id, *loaded, total_size, UploadStatus::Uploading);
-
-                Ok::<_, std::io::Error>(chunk)
-            }
-        }))
-        .buffered(1)
-        .map(|result| result.map(bytes::Bytes::from));
-
-        let body = Body::wrap_stream(stream);
+        // Emit progress at 50% to show upload is happening
+        emit_progress(&window, &upload_id, total_size / 2, total_size, UploadStatus::Uploading);
 
         // Perform the upload
         let result = client
             .post(&upload_url)
             .headers(headers.clone())
-            .body(body)
+            .body(file_data.clone())
             .send()
             .await;
 
@@ -341,7 +307,7 @@ pub async fn cancel_native_upload(
     let uploads = state.active_uploads.read().await;
     if let Some(upload) = uploads.get(&upload_id) {
         log::info!("Cancelling upload: {}", upload.file_name);
-        upload.cancel_token.cancel();
+        upload.cancelled.store(true, Ordering::SeqCst);
         Ok(())
     } else {
         log::warn!("Upload not found: {}", upload_id);
