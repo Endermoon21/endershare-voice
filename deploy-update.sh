@@ -11,7 +11,7 @@ DOCKER_HOST="root@100.89.14.34"
 DOCKER_PASS="lancache123"
 VOLTA_BUILD_PATH="C:/Users/VOLTA/cinny-desktop/src-tauri/target/release/bundle/msi"
 UPDATE_SERVER_PATH="/opt/cinny-downloads"
-TAURI_KEY_PATH="/opt/cinny-keys/tauri.key"
+TAURI_KEY_PATH="/opt/cinny-keys/signing.key"
 GITHUB_REPO="Endermoon21/cinny-min"
 
 # Colors
@@ -65,14 +65,16 @@ sshpass -p "$DOCKER_PASS" scp -o StrictHostKeyChecking=no \
 
 # Step 3: Sign the bundle
 echo -e "\n${GREEN}[3/5] Signing bundle...${NC}"
-SIGN_OUTPUT=$(sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "$DOCKER_HOST" \
-    "cd ${UPDATE_SERVER_PATH} && ~/.cargo/bin/cargo-tauri signer sign -f ${TAURI_KEY_PATH} -p '' ${BUNDLE_NAME} 2>&1")
+# Sign using rsign with no password (-W flag)
+sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "$DOCKER_HOST" \
+    "cd ${UPDATE_SERVER_PATH} && ~/.cargo/bin/rsign sign -W -s ${TAURI_KEY_PATH} ${BUNDLE_NAME} 2>&1"
 
-# Extract signature from output
-SIGNATURE=$(echo "$SIGN_OUTPUT" | grep -A1 "Public signature:" | tail -1)
+# Read the signature file and base64 encode it
+SIGNATURE=$(sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "$DOCKER_HOST" \
+    "cat ${UPDATE_SERVER_PATH}/${BUNDLE_NAME}.minisig | base64 -w0")
+
 if [ -z "$SIGNATURE" ]; then
-    echo -e "${RED}Error: Failed to extract signature${NC}"
-    echo "$SIGN_OUTPUT"
+    echo -e "${RED}Error: Failed to read signature file${NC}"
     exit 1
 fi
 
