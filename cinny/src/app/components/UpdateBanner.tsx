@@ -32,10 +32,19 @@ export function UpdateBanner() {
       }
 
       const { shouldUpdate, manifest } = await tauri.updater.checkUpdate();
-      
-      if (shouldUpdate && manifest) {
+
+      // Get current app version
+      const currentVersion = await tauri.app?.getVersion?.() || '';
+      const updateVersion = manifest?.version || '';
+
+      // Double-check: only show update if versions actually differ
+      if (shouldUpdate && manifest && updateVersion && currentVersion !== updateVersion) {
+        console.log(`[Update] Available: ${currentVersion} -> ${updateVersion}`);
         setState({ status: 'available', version: manifest.version });
       } else {
+        if (shouldUpdate) {
+          console.log(`[Update] Skipped - same version: ${currentVersion}`);
+        }
         setState({ status: 'none' });
       }
     } catch (e: any) {
