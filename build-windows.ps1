@@ -48,6 +48,13 @@ $content = $content -replace '\{\{GSTREAMER_INSTALLER_PATH\}\}', $gstreamerAbsPa
 $content | Set-Content $installerNsi -NoNewline
 Write-Host "Updated installer.nsi with GStreamer path: $gstreamerAbsPath" -ForegroundColor Green
 
+# Set Tauri signing key (no password)
+$env:TAURI_PRIVATE_KEY = @"
+untrusted comment: rsign encrypted secret key
+RWRTY0IyUkx4WPFGnwaMqhLxZXex0efgj2Nsg416mDa7j0DoT6YAABAAAAAAAAAAAAIAAAAAhc5wSuJMtAK24RClYNvtQOtX6WBxX1SAqHyXCrcmOgK78SYEstNkHnIZW0WzYAOiEwKbq4tdWf4JEPRnSbCyLa3tifGGkxO9Gb88qB+YdO2GU5eWjPH3cqdVRE7/f+7JudLcHMsIXLY=
+"@
+$env:TAURI_KEY_PASSWORD = ""
+
 # Build Tauri app
 Write-Host "`nBuilding Tauri application..." -ForegroundColor Cyan
 npx tauri build
