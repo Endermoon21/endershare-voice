@@ -43,9 +43,10 @@ function PageZoomFeature() {
   const [pageZoom] = useSetting(settingsAtom, 'pageZoom');
 
   if (pageZoom === 100) {
-    document.documentElement.style.removeProperty('font-size');
+    document.documentElement.style.removeProperty('zoom');
   } else {
-    document.documentElement.style.setProperty('font-size', `calc(1em * ${pageZoom / 100})`);
+    // Use CSS zoom for complete UI scaling (images, borders, everything)
+    document.documentElement.style.setProperty('zoom', `${pageZoom / 100}`);
   }
 
   return null;

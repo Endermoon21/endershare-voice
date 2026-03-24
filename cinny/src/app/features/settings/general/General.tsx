@@ -1,7 +1,6 @@
 import React, {
   ChangeEventHandler,
   FormEventHandler,
-  KeyboardEventHandler,
   MouseEventHandler,
   useEffect,
   useState,
@@ -27,7 +26,6 @@ import {
   Text,
   toRem,
 } from 'folds';
-import { isKeyHotkey } from 'is-hotkey';
 import FocusTrap from 'focus-trap-react';
 import { Page, PageContent, PageHeader } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
@@ -259,47 +257,49 @@ function SystemThemePreferences() {
   );
 }
 
-function PageZoomInput() {
+function PageZoomSlider() {
   const [pageZoom, setPageZoom] = useSetting(settingsAtom, 'pageZoom');
-  const [currentZoom, setCurrentZoom] = useState(`${pageZoom}`);
 
   const handleZoomChange: ChangeEventHandler<HTMLInputElement> = (evt) => {
-    setCurrentZoom(evt.target.value);
+    const newZoom = parseInt(evt.target.value, 10);
+    if (!Number.isNaN(newZoom)) {
+      setPageZoom(newZoom);
+    }
   };
 
-  const handleZoomEnter: KeyboardEventHandler<HTMLInputElement> = (evt) => {
-    if (isKeyHotkey('escape', evt)) {
-      evt.stopPropagation();
-      setCurrentZoom(pageZoom.toString());
-    }
-    if (
-      isKeyHotkey('enter', evt) &&
-      'value' in evt.target &&
-      typeof evt.target.value === 'string'
-    ) {
-      const newZoom = parseInt(evt.target.value, 10);
-      if (Number.isNaN(newZoom)) return;
-      const safeZoom = Math.max(Math.min(newZoom, 150), 75);
-      setPageZoom(safeZoom);
-      setCurrentZoom(safeZoom.toString());
-    }
+  const handleReset = () => {
+    setPageZoom(100);
   };
 
   return (
-    <Input
-      style={{ width: toRem(100) }}
-      variant={pageZoom === parseInt(currentZoom, 10) ? 'Secondary' : 'Success'}
-      size="300"
-      radii="300"
-      type="number"
-      min="75"
-      max="150"
-      value={currentZoom}
-      onChange={handleZoomChange}
-      onKeyDown={handleZoomEnter}
-      after={<Text size="T300">%</Text>}
-      outlined
-    />
+    <Box direction="Row" alignItems="Center" gap="300" style={{ minWidth: toRem(220) }}>
+      <Text size="T200" style={{ minWidth: toRem(32) }}>{pageZoom}%</Text>
+      <input
+        type="range"
+        min="75"
+        max="150"
+        step="5"
+        value={pageZoom}
+        onChange={handleZoomChange}
+        style={{
+          flex: 1,
+          height: toRem(4),
+          cursor: 'pointer',
+          accentColor: 'var(--mx-uc-primary)',
+        }}
+      />
+      {pageZoom !== 100 && (
+        <Button
+          size="300"
+          variant="Secondary"
+          radii="300"
+          onClick={handleReset}
+          style={{ padding: `0 ${toRem(8)}` }}
+        >
+          <Text size="T200">Reset</Text>
+        </Button>
+      )}
+    </Box>
   );
 }
 
@@ -348,7 +348,7 @@ function Appearance() {
       </SequenceCard>
 
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
-        <SettingTile title="Page Zoom" after={<PageZoomInput />} />
+        <SettingTile title="UI Scale" after={<PageZoomSlider />} />
       </SequenceCard>
     </Box>
   );
