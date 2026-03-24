@@ -146,8 +146,8 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setParticipantVolume = useCallback((identity: string, volume: number) => {
-    // Allow up to 400% volume boost
-    const clampedVolume = Math.max(0, Math.min(4, volume));
+    // Allow up to 800% volume boost for quieter participants
+    const clampedVolume = Math.max(0, Math.min(8, volume));
     setParticipantVolumes(prev => ({ ...prev, [identity]: clampedVolume }));
 
     // Use gain node if available (for > 100% boost)
@@ -284,13 +284,32 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
                 });
               }
               const source = ctx.createMediaElementSource(audioElement);
+              // Ensure stereo routing on source
+              source.channelCount = 2;
+              source.channelCountMode = 'max';
+              source.channelInterpretation = 'speakers';
+
               const gainNode = ctx.createGain();
-              // Ensure stereo routing
+              // Ensure stereo routing on gain
               gainNode.channelCount = 2;
               gainNode.channelCountMode = 'explicit';
               gainNode.channelInterpretation = 'speakers';
+
+              // Ensure destination can handle stereo
+              if (ctx.destination.maxChannelCount >= 2) {
+                ctx.destination.channelCount = 2;
+              }
+
               source.connect(gainNode);
               gainNode.connect(ctx.destination);
+
+              console.log('[LiveKit] Audio routing configured:', {
+                participant: participant.identity,
+                sourceChannels: source.channelCount,
+                gainChannels: gainNode.channelCount,
+                destChannels: ctx.destination.channelCount,
+                destMaxChannels: ctx.destination.maxChannelCount,
+              });
               sourceNodesRef.current.set(participant.identity, source);
               gainNodesRef.current.set(participant.identity, gainNode);
               const savedVolume = volumesRef.current[participant.identity] ?? 1;
@@ -437,6 +456,7 @@ export function LiveKitProvider({ children }: { children: ReactNode }) {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true, // Enable AGC for better voice pickup
+          channelCount: 2, // Request stereo capture
         },
         publishDefaults: {
           dtx: true,  // Discontinuous transmission - saves bandwidth when silent

@@ -239,25 +239,78 @@ function ParticipantControl({ participant, avatarUrl, displayName, onClose }: Pa
     }
   };
 
+  const resetVolume = () => {
+    setParticipantVolume(participant.identity, 1);
+    setLocalMuted(false);
+  };
+
+  // Format volume display: show +/- relative to 100%
+  const volumePercent = Math.round(volume * 100);
+  const volumeDisplay = volume === 1 ? "100%" : volume > 1 ? `+${volumePercent - 100}%` : `${volumePercent}%`;
+  const isBoost = volume > 1;
+  const isReduced = volume < 1 && volume > 0;
+
   return (
     <div ref={popupRef} className={css.ParticipantPopup} onClick={(e) => e.stopPropagation()}>
+      {/* Header */}
       <div className={css.PopupHeader}>
         <div className={css.PopupAvatar}>
           {avatarUrl ? <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : displayName.charAt(0).toUpperCase()}
         </div>
-        <span className={css.PopupName}>{displayName}</span>
-      </div>
-      <div className={css.VolumeControl}>
-        <div className={css.VolumeLabel}>
-          <span>User Volume</span>
-          <span className={css.VolumeValue}>{Math.round(volume * 100)}%</span>
+        <div className={css.PopupHeaderInfo}>
+          <span className={css.PopupName}>{displayName}</span>
+          <span className={css.PopupSubtext}>Adjust volume</span>
         </div>
-        <div className={css.VolumeSliderContainer}>
+      </div>
+
+      {/* Volume Section */}
+      <div className={css.VolumeSection}>
+        {/* Volume Display */}
+        <div className={css.VolumeDisplay}>
           <span className={css.VolumeIcon}>{volume === 0 ? <VolumeMuteIcon /> : <VolumeHighIcon />}</span>
-          <input type="range" min="0" max="4" step="0.01" value={volume} onChange={handleVolumeChange} className={css.VolumeSlider} />
+          <span className={classNames(css.VolumeValueLarge, {
+            [css.VolumeValueBoost]: isBoost,
+            [css.VolumeValueReduced]: isReduced,
+            [css.VolumeValueMuted]: volume === 0,
+          })}>
+            {volume === 0 ? "Muted" : volumeDisplay}
+          </span>
+          {volume !== 1 && (
+            <button className={css.ResetVolumeBtn} onClick={resetVolume} title="Reset to 100%">
+              ↺
+            </button>
+          )}
         </div>
+
+        {/* Slider with markers */}
+        <div className={css.SliderWrapper}>
+          <div className={css.SliderTrack}>
+            <input
+              type="range"
+              min="0"
+              max="8"
+              step="0.01"
+              value={volume}
+              onChange={handleVolumeChange}
+              className={css.VolumeSlider}
+            />
+            {/* Center marker at 100% */}
+            <div className={css.SliderCenterMark} style={{ left: '12.5%' }} />
+          </div>
+          <div className={css.SliderLabels}>
+            <span>0%</span>
+            <span className={css.SliderLabelCenter}>100%</span>
+            <span>800%</span>
+          </div>
+        </div>
+
       </div>
-      <button className={classNames(css.LocalMuteBtn, { [css.LocalMuteBtnActive]: localMuted || volume === 0 })} onClick={toggleLocalMute}>
+
+      {/* Mute Button */}
+      <button
+        className={classNames(css.LocalMuteBtn, { [css.LocalMuteBtnActive]: localMuted || volume === 0 })}
+        onClick={toggleLocalMute}
+      >
         {localMuted || volume === 0 ? <VolumeMuteIcon /> : <VolumeHighIcon />}
         <span>{localMuted || volume === 0 ? "Unmute User" : "Mute User"}</span>
       </button>

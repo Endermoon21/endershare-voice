@@ -24,6 +24,7 @@ pub struct CaptureSource {
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub hwnd: Option<u64>, // Window handle for window capture
+    pub hmonitor: Option<u64>, // Monitor handle for screen capture (HMONITOR)
     pub thumbnail: Option<String>, // Base64-encoded JPEG thumbnail
 }
 
@@ -391,6 +392,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    hmonitor: None,
                     thumbnail: None,
                 }])
             },
@@ -403,6 +405,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    hmonitor: None,
                     thumbnail: None,
                 }])
             },
@@ -415,6 +418,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
                     width: None,
                     height: None,
                     hwnd: None,
+                    hmonitor: None,
                     thumbnail: None,
                 }])
             }
@@ -429,6 +433,7 @@ pub async fn list_capture_sources() -> Result<Vec<CaptureSource>, String> {
             width: None,
             height: None,
             hwnd: None,
+            hmonitor: None,
             thumbnail: None,
         }])
     }
@@ -451,6 +456,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
     unsafe {
         struct MonitorInfo {
             index: u32,
+            handle: isize, // HMONITOR as isize for storage
             name: String,
             width: u32,
             height: u32,
@@ -491,6 +497,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
 
                 data.monitors.push(MonitorInfo {
                     index: data.index,
+                    handle: hmonitor.0 as isize,
                     name,
                     width,
                     height,
@@ -519,12 +526,13 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
         for mon in monitor_data.monitors {
             let thumbnail = capture_monitor_thumbnail(mon.index, mon.rect);
             sources.push(CaptureSource {
-                id: format!("monitor:{}", mon.index),
+                id: format!("monitor:{}", mon.handle), // Use HMONITOR handle as ID
                 name: mon.name,
                 source_type: "screen".to_string(),
                 width: Some(mon.width),
                 height: Some(mon.height),
                 hwnd: None,
+                hmonitor: Some(mon.handle as u64),
                 thumbnail,
             });
         }
@@ -539,6 +547,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             width: None,
             height: None,
             hwnd: None,
+            hmonitor: None,
             thumbnail: None,
         });
     }
@@ -668,6 +677,7 @@ fn list_windows_sources_safe() -> Result<Vec<CaptureSource>, String> {
             width: Some(width),
             height: Some(height),
             hwnd: Some(hwnd_value),
+            hmonitor: None,
             thumbnail,
         });
     }
@@ -702,12 +712,18 @@ fn build_video_capture(config: &StreamConfig) -> String {
                 hwnd
             ));
         } else if config.source_id.starts_with("monitor:") {
-            // Per-monitor capture (DXGI - faster)
-            let monitor_index: i32 = config.source_id[8..].parse().unwrap_or(0);
-            video.push_str(&format!(
-                "d3d11screencapturesrc monitor-index={} show-cursor=true",
-                monitor_index
-            ));
+            // Per-monitor capture using HMONITOR handle with WGC for correct monitor targeting
+            let monitor_handle: i64 = config.source_id[8..].parse().unwrap_or(0);
+            if monitor_handle > 0 {
+                // Use WGC with monitor-handle for accurate capture
+                video.push_str(&format!(
+                    "d3d11screencapturesrc monitor-handle={} capture-api=wgc show-cursor=true",
+                    monitor_handle
+                ));
+            } else {
+                // Fallback to monitor-index=0 if no valid handle
+                video.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");
+            }
         } else {
             // Default: primary monitor (index 0)
             video.push_str("d3d11screencapturesrc monitor-index=0 show-cursor=true");

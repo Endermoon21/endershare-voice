@@ -263,7 +263,6 @@ export const UserStatusDnd = style({ backgroundColor: butter.danger });
 export const UserStatusOffline = style({ backgroundColor: butter.gray });
 export const UserStatusInCall = style({
   backgroundColor: butter.success,
-  boxShadow: '0 0 4px rgba(35, 165, 90, 0.5)',
 });
 
 // Mute/deafen status badge on avatar

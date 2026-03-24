@@ -290,10 +290,14 @@ const parseListNode = (
   if (mdSequence !== undefined) {
     const prefix = mdSequence || '-';
     const [starOrHyphen] = prefix.match(/^\*|-$/) ?? [];
-    return listLines.map((lineChildren) => ({
+    // For ordered lists, increment the number for each item
+    const isOrderedList = !starOrHyphen && /^\d+$/.test(prefix);
+    const startNum = isOrderedList ? parseInt(prefix, 10) : 0;
+
+    return listLines.map((lineChildren, index) => ({
       type: BlockType.Paragraph,
       children: [
-        { text: `${starOrHyphen ? `${starOrHyphen} ` : `${prefix}. `} ` },
+        { text: starOrHyphen ? `${starOrHyphen} ` : `${startNum + index}. ` },
         ...lineChildren,
       ],
     }));

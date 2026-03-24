@@ -29,6 +29,7 @@ export interface NativeCaptureSource {
   width: number | null;
   height: number | null;
   hwnd: number | null; // Window handle for window capture
+  hmonitor: number | null; // Monitor handle for screen capture (HMONITOR)
   thumbnail: string | null; // Base64-encoded JPEG thumbnail (data:image/jpeg;base64,...)
 }
 

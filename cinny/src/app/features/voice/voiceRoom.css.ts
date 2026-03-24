@@ -376,16 +376,16 @@ export const EmptyText = style({ fontSize: "16px", fontWeight: 500 });
 // Discord-style pop easing for animations
 const discordPopEase = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
-// Participant popup styles
+// Participant popup styles - Discord-inspired volume control
 export const ParticipantPopup = style({
   position: "absolute",
   bottom: "60px",
   left: "12px",
   backgroundColor: color.Surface.Container,
-  borderRadius: "8px",
-  padding: "12px",
-  minWidth: "200px",
-  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
+  borderRadius: "12px",
+  padding: "16px",
+  minWidth: "280px",
+  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
   zIndex: 10,
   border: `1px solid ${color.Surface.ContainerLine}`,
   animation: `${fadeSlideIn} 0.15s ${discordPopEase}`,
@@ -394,85 +394,171 @@ export const ParticipantPopup = style({
 export const PopupHeader = style({
   display: "flex",
   alignItems: "center",
-  gap: "8px",
-  marginBottom: "12px",
-  paddingBottom: "8px",
+  gap: "12px",
+  marginBottom: "16px",
+  paddingBottom: "12px",
   borderBottom: `1px solid ${color.Surface.ContainerLine}`,
 });
 
+export const PopupHeaderInfo = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px",
+  flex: 1,
+  minWidth: 0,
+});
+
 export const PopupAvatar = style({
-  width: "32px",
-  height: "32px",
+  width: "40px",
+  height: "40px",
   borderRadius: "50%",
   backgroundColor: color.Primary.Main,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "14px",
+  fontSize: "16px",
   fontWeight: 600,
   color: color.Primary.OnMain,
   overflow: "hidden",
+  flexShrink: 0,
 });
 
 export const PopupName = style({
-  fontSize: "14px",
+  fontSize: "15px",
   fontWeight: 600,
   color: color.Surface.OnContainer,
-  flex: 1,
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
 
-export const VolumeControl = style({
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-});
-
-export const VolumeLabel = style({
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
+export const PopupSubtext = style({
   fontSize: "12px",
   color: color.SurfaceVariant.OnContainer,
-  textTransform: "uppercase",
-  fontWeight: 600,
-  letterSpacing: "0.02em",
 });
 
-export const VolumeSliderContainer = style({
+// Volume Section
+export const VolumeSection = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+});
+
+export const VolumeDisplay = style({
   display: "flex",
   alignItems: "center",
-  gap: "8px",
+  gap: "10px",
+  padding: "10px 12px",
+  backgroundColor: color.SurfaceVariant.Container,
+  borderRadius: "8px",
+});
+
+export const VolumeValueLarge = style({
+  fontSize: "20px",
+  fontWeight: 700,
+  color: color.Surface.OnContainer,
+  flex: 1,
+});
+
+export const VolumeValueBoost = style({
+  color: color.Success.Main,
+});
+
+export const VolumeValueReduced = style({
+  color: color.Warning.Main,
+});
+
+export const VolumeValueMuted = style({
+  color: color.Critical.Main,
+});
+
+export const ResetVolumeBtn = style({
+  width: "28px",
+  height: "28px",
+  borderRadius: "6px",
+  border: "none",
+  backgroundColor: color.Surface.ContainerHover,
+  color: color.SurfaceVariant.OnContainer,
+  fontSize: "16px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "background-color 0.15s ease, color 0.15s ease",
+  ":hover": {
+    backgroundColor: color.Surface.ContainerActive,
+    color: color.Surface.OnContainer,
+  },
+});
+
+// Slider wrapper
+export const SliderWrapper = style({
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+});
+
+export const SliderTrack = style({
+  position: "relative",
+  padding: "0 1px",
+});
+
+export const SliderCenterMark = style({
+  position: "absolute",
+  top: "50%",
+  transform: "translateY(-50%)",
+  width: "2px",
+  height: "12px",
+  backgroundColor: color.SurfaceVariant.OnContainer,
+  borderRadius: "1px",
+  pointerEvents: "none",
+  opacity: 0.5,
+});
+
+export const SliderLabels = style({
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: "10px",
+  color: color.SurfaceVariant.OnContainer,
+  paddingTop: "2px",
+  position: "relative",
+});
+
+export const SliderLabelCenter = style({
+  position: "absolute",
+  left: "12.5%",
+  transform: "translateX(-50%)",
+  fontWeight: 600,
 });
 
 export const VolumeSlider = style({
-  flex: 1,
-  height: "4px",
+  width: "100%",
+  height: "6px",
   WebkitAppearance: "none",
   appearance: "none",
   backgroundColor: color.SurfaceVariant.Container,
-  borderRadius: "2px",
+  borderRadius: "3px",
   outline: "none",
   cursor: "pointer",
   "::-webkit-slider-thumb": {
     WebkitAppearance: "none",
     appearance: "none",
-    width: "14px",
-    height: "14px",
+    width: "16px",
+    height: "16px",
     borderRadius: "50%",
     backgroundColor: color.Surface.OnContainer,
     cursor: "pointer",
     border: "none",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
   },
   "::-moz-range-thumb": {
-    width: "14px",
-    height: "14px",
+    width: "16px",
+    height: "16px",
     borderRadius: "50%",
     backgroundColor: color.Surface.OnContainer,
     cursor: "pointer",
     border: "none",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.3)",
   },
 });
 
@@ -481,25 +567,20 @@ export const VolumeIcon = style({
   flexShrink: 0,
 });
 
-export const VolumeValue = style({
-  fontSize: "12px",
-  color: color.SurfaceVariant.OnContainer,
-  minWidth: "36px",
-  textAlign: "right",
-});
-
 export const LocalMuteBtn = style({
   display: "flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: "8px",
   width: "100%",
-  padding: "8px",
-  marginTop: "8px",
-  backgroundColor: "transparent",
+  padding: "10px",
+  marginTop: "12px",
+  backgroundColor: color.SurfaceVariant.Container,
   border: "none",
-  borderRadius: "4px",
+  borderRadius: "8px",
   color: color.SurfaceVariant.OnContainer,
   fontSize: "13px",
+  fontWeight: 500,
   cursor: "pointer",
   transition: "background-color 0.15s ease, color 0.15s ease",
   ":hover": {
@@ -509,8 +590,10 @@ export const LocalMuteBtn = style({
 });
 
 export const LocalMuteBtnActive = style({
+  backgroundColor: "rgba(242, 63, 67, 0.15)",
   color: color.Critical.Main,
   ":hover": {
+    backgroundColor: "rgba(242, 63, 67, 0.25)",
     color: color.Critical.Main,
   },
 });

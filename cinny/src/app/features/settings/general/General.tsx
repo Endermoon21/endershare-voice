@@ -711,6 +711,8 @@ function Editor() {
   const [enterForNewline, setEnterForNewline] = useSetting(settingsAtom, 'enterForNewline');
   const [isMarkdown, setIsMarkdown] = useSetting(settingsAtom, 'isMarkdown');
   const [hideActivity, setHideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const [showReadReceiptsInDMs, setShowReadReceiptsInDMs] = useSetting(settingsAtom, 'showReadReceiptsInDMs');
+  const [showReadReceiptsInRooms, setShowReadReceiptsInRooms] = useSetting(settingsAtom, 'showReadReceiptsInRooms');
 
   return (
     <Box direction="Column" gap="100">
@@ -735,6 +737,18 @@ function Editor() {
           title="Hide Typing & Read Receipts"
           description="Turn off both typing status and read receipts to keep your activity private."
           after={<Switch variant="Primary" value={hideActivity} onChange={setHideActivity} />}
+        />
+      </SequenceCard>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Show Read Receipts in DMs"
+          description="Display read receipts in direct messages."
+          after={<Switch variant="Primary" value={showReadReceiptsInDMs} onChange={setShowReadReceiptsInDMs} disabled={hideActivity} />}
+        />
+        <SettingTile
+          title="Show Read Receipts in Rooms"
+          description="Display read receipts in channels and rooms with multiple people."
+          after={<Switch variant="Primary" value={showReadReceiptsInRooms} onChange={setShowReadReceiptsInRooms} disabled={hideActivity} />}
         />
       </SequenceCard>
     </Box>

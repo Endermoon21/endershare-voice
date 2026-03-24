@@ -8,11 +8,19 @@
  * - Automatic retry with exponential backoff
  */
 
-import { invoke } from '@tauri-apps/api/tauri';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
-
 // Check if we're running in Tauri
 export const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+// Tauri API functions (runtime access to avoid module resolution issues)
+const invoke = isTauri
+  ? (window as any).__TAURI__.invoke
+  : async () => { throw new Error('Not running in Tauri'); };
+
+const listen = isTauri
+  ? (window as any).__TAURI__.event.listen
+  : async () => { throw new Error('Not running in Tauri'); };
+
+type UnlistenFn = () => void;
 
 // MIME type lookup for common formats (fallback when browser doesn't detect)
 const MIME_TYPES: Record<string, string> = {

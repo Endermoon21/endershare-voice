@@ -730,6 +730,20 @@ export const Message = as<'div', MessageProps>(
     const [menuAnchor, setMenuAnchor] = useState<RectCords>();
     const [emojiBoardAnchor, setEmojiBoardAnchor] = useState<RectCords>();
 
+    // Pin functionality
+    const pinnedEvents = useRoomPinnedEvents(room);
+    const isPinned = pinnedEvents.includes(mEvent.getId() ?? '');
+    const handleQuickPin = useCallback(() => {
+      const eventId = mEvent.getId();
+      const pinContent: RoomPinnedEventsEventContent = {
+        pinned: Array.from(pinnedEvents).filter((id) => id !== eventId),
+      };
+      if (!isPinned && eventId) {
+        pinContent.pinned.push(eventId);
+      }
+      mx.sendStateEvent(room.roomId, StateEvent.RoomPinnedEvents as any, pinContent);
+    }, [mx, room.roomId, mEvent, pinnedEvents, isPinned]);
+
     const senderDisplayName =
       getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
     const senderAvatarMxc = getMemberAvatarMxc(room, senderId);
@@ -959,6 +973,18 @@ export const Message = as<'div', MessageProps>(
                     radii="300"
                   >
                     <Icon src={Icons.Pencil} size="100" />
+                  </IconButton>
+                )}
+                {canPinEvent && (
+                  <IconButton
+                    onClick={handleQuickPin}
+                    variant="SurfaceVariant"
+                    size="300"
+                    radii="300"
+                    aria-pressed={isPinned}
+                    title={isPinned ? 'Unpin message' : 'Pin message'}
+                  >
+                    <Icon src={Icons.Pin} size="100" filled={isPinned} />
                   </IconButton>
                 )}
                 <PopOut

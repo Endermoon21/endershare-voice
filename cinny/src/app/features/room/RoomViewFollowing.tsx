@@ -23,6 +23,9 @@ import { useRoomLatestRenderedEvent } from '../../hooks/useRoomLatestRenderedEve
 import { useRoomEventReaders } from '../../hooks/useRoomEventReaders';
 import { EventReaders } from '../../components/event-readers';
 import { stopPropagation } from '../../utils/keyboard';
+import { useSetting } from '../../state/hooks/settings';
+import { settingsAtom } from '../../state/settings';
+import { useIsDirectRoom } from '../../hooks/useRoom';
 
 export function RoomViewFollowingPlaceholder() {
   return <div className={css.RoomViewFollowingPlaceholder} />;
@@ -37,11 +40,25 @@ export const RoomViewFollowing = as<'div', RoomViewFollowingProps>(
     const [open, setOpen] = useState(false);
     const latestEvent = useRoomLatestRenderedEvent(room);
     const latestEventReaders = useRoomEventReaders(room, latestEvent?.getId());
-    const names = latestEventReaders
-      .filter((readerId) => readerId !== mx.getUserId())
-      .map(
-        (readerId) => getMemberDisplayName(room, readerId) ?? getMxIdLocalPart(readerId) ?? readerId
-      );
+
+    // Read receipt visibility settings
+    const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+    const [showReadReceiptsInDMs] = useSetting(settingsAtom, 'showReadReceiptsInDMs');
+    const [showReadReceiptsInRooms] = useSetting(settingsAtom, 'showReadReceiptsInRooms');
+
+    // Use the proper DM detection from context
+    const isDM = useIsDirectRoom();
+
+    // Check if we should show read receipts
+    const shouldShowReadReceipts = !hideActivity && (isDM ? showReadReceiptsInDMs : showReadReceiptsInRooms);
+
+    const names = shouldShowReadReceipts
+      ? latestEventReaders
+          .filter((readerId) => readerId !== mx.getUserId())
+          .map(
+            (readerId) => getMemberDisplayName(room, readerId) ?? getMxIdLocalPart(readerId) ?? readerId
+          )
+      : [];
 
     const eventId = latestEvent?.getId();
 

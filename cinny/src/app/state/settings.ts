@@ -20,6 +20,8 @@ export interface Settings {
   twitterEmoji: boolean;
   pageZoom: number;
   hideActivity: boolean;
+  showReadReceiptsInDMs: boolean;
+  showReadReceiptsInRooms: boolean;
 
   isPeopleDrawer: boolean;
   memberSortFilterIndex: number;
@@ -54,6 +56,8 @@ const defaultSettings: Settings = {
   twitterEmoji: false,
   pageZoom: 100,
   hideActivity: false,
+  showReadReceiptsInDMs: true,
+  showReadReceiptsInRooms: false, // Hidden in rooms by default per user request
 
   isPeopleDrawer: true,
   memberSortFilterIndex: 0,
